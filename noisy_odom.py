@@ -1,7 +1,8 @@
-import rclpy
-from rclpy.node import Node
 import numpy as np
+import rclpy
 from nav_msgs.msg import Odometry
+from rclpy.node import Node
+
 
 class NoisyOdometry(Node):
     def __init__(self):
@@ -31,10 +32,10 @@ class NoisyOdometry(Node):
         noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
         noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
 
-        # Print both values
-        print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
-        print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
-        print("-" * 40)
+        # # Print both values
+        # print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
+        # print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
+        # print("-" * 40)
 
         # Create a new message with noisy data
         noisy_msg = Odometry()

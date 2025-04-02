@@ -1,7 +1,4 @@
-
-
 import numpy as np
-
 
 
 # TODO Part 3: Comment the code explaining each part
@@ -9,7 +6,6 @@ class kalman_filter:
     
     # TODO Part 3: Initialize the covariances and the states    
     def __init__(self, P,Q,R, x, dt):
-        
         self.P=P
         self.Q=Q
         self.R=R
@@ -61,9 +57,6 @@ class kalman_filter:
             v  + vdot*dt,
             vdot,
         ])
-        
-
-
     
     def jacobian_A(self):
         x, y, th, w, v, vdot = self.x
