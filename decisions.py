@@ -53,7 +53,7 @@ class decision_maker(Node):
             return
 
         self.motion_type=motion_type
-        self.goal=self.planner.plan() if self.motion_type != SPIRAL_4TUNE else None
+        self.goals=self.planner.plan() if self.motion_type != SPIRAL_4TUNE else None
         
 
         self.create_timer(publishing_period, self.timerCallback)
@@ -79,18 +79,12 @@ class decision_maker(Node):
             return
 
         
-        if type(self.goal) == list:
-            reached_goal=True if calculate_linear_error(self.localizer.getPose(), self.goal[-1]) <self.reachThreshold else False
-        else: 
-            reached_goal=True if calculate_linear_error(self.localizer.getPose(), self.goal) <self.reachThreshold else False
+        reached_goal = True if calculate_linear_error(self.localizer.getPose(), self.goal[-1]) <self.reachThreshold else False
 
 
-        if reached_goal:
+        if self.goals:
             print("reached goal")
             self.publisher.publish(vel_msg)
-            
-            self.controller.PID_angular.logger.save_log()
-            self.controller.PID_linear.logger.save_log()
             
             raise SystemExit
         
