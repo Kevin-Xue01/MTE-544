@@ -4,69 +4,78 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from tf2_ros import Buffer, TransformListener
+import sys
+
+from utilities import Logger
+
+from rclpy.time import Time
+
+from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+from rclpy.qos import QoSProfile
+from nav_msgs.msg import Odometry as odom
+
+from sensor_msgs.msg import Imu
+from kalman_filter import kalman_filter
+
+from rclpy import init, spin, spin_once
+
+import numpy as np
+import message_filters
+
+rawSensors=0
+rawSensors_headers = ["x", "y", "th", "stamp"]
+kalmanFilter=1
+kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
+odom_qos=QoSProfile(reliability=2, durability=2, history=1, depth=10)
 
 odom_qos = QoSProfile(reliability=2, durability=2, history=1, depth=10)
 
-class Localization(Node):
-
-    def __init__(self, loggerName="robotPose.csv"):
-        super().__init__("localizer")
-
-        self.loc_logger = Logger(loggerName, rawSensors_headers)
-        self.pose_odom = np.zeros(3)  # (x, y, theta) from /odom
-        self.pose_tf = np.zeros(3)    # (x, y, theta) from /tf
-
-        # TF Listener
+class OdomVsTFLogger(Node):
+    def __init__(self):
+        super().__init__('odom_vs_tf_logger')
+        
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-
-        # Subscribing to Odometry
-        self.create_subscription(Odometry, "/odom", self.odom_callback, qos_profile=odom_qos)
-
-        # Timer for TF lookup
-        self.create_timer(0.1, self.get_ground_truth_pose)
+        
+        self.odom_pose = None
+        self.tf_pose = None
 
     def odom_callback(self, msg):
-        """Extract pose from Odometry message."""
-        x = msg.pose.pose.position.x
-        y = msg.pose.pose.position.y
-        qz = msg.pose.pose.orientation.z
-        qw = msg.pose.pose.orientation.w
+        x, y = msg.pose.pose.position.x, msg.pose.pose.position.y
+        qz, qw = msg.pose.pose.orientation.z, msg.pose.pose.orientation.w
         theta = np.arctan2(2.0 * (qw * qz), 1.0 - 2.0 * (qz ** 2))
 
-        self.pose_odom = np.array([x, y, theta])
+        self.odom_pose = np.array([x, y, theta])
         self.log_comparison()
 
-    def get_ground_truth_pose(self):
-        """Extract pose from TF transform."""
+    def get_tf_pose(self):
         try:
-            now = rclpy.time.Time()
-            trans = self.tf_buffer.lookup_transform("odom", "base_link", now)
-
-            x = trans.transform.translation.x
-            y = trans.transform.translation.y
-            qz = trans.transform.rotation.z
-            qw = trans.transform.rotation.w
+            trans = self.tf_buffer.lookup_transform("odom", "base_footprint", Time())
+            x, y = trans.transform.translation.x, trans.transform.translation.y
+            qz, qw = trans.transform.rotation.z, trans.transform.rotation.w
             theta = np.arctan2(2.0 * (qw * qz), 1.0 - 2.0 * (qz ** 2))
 
-            self.pose_tf = np.array([x, y, theta])
-            self.log_comparison()
-
+            self.tf_pose = np.array([x, y, theta])
         except Exception as e:
-            self.get_logger().warn(f"TF transform unavailable: {e}")
+            self.get_logger().warn(f"TF lookup failed: {e}")
+            self.tf_pose = None
 
     def log_comparison(self):
-        """Log and compare odometry vs ground truth."""
-        diff = np.linalg.norm(self.pose_odom[:2] - self.pose_tf[:2])
-        self.get_logger().info(f"Odom: {self.pose_odom}, TF: {self.pose_tf}, Error: {diff:.4f}")
+        self.get_tf_pose()
+        if self.odom_pose is not None and self.tf_pose is not None:
+            diff = np.linalg.norm(self.odom_pose[:2] - self.tf_pose[:2])
+            print(f"Δ Position: {diff:.4f}, Odom: {self.odom_pose}, TF: {self.tf_pose}")
 
-        self.loc_logger.log(np.hstack([self.pose_odom, self.pose_tf, diff]))
-
-def main():
-    rclpy.init()
-    node = Localization()
+def main(args=None):
+    rclpy.init(args=args)
+    node = OdomVsTFLogger()
     rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

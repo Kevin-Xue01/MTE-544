@@ -20,14 +20,14 @@ from controller import controller, trajectoryController
 class decision_maker(Node):
     
     
-    def __init__(self, publisher_msg, publishing_topic, rate=10, motion_type=POINT_PLANNER):
+    def __init__(self, rate=10, motion_type=POINT_PLANNER):
 
         super().__init__("decision_maker")
         qos = QoSProfile(reliability=2, durability=2, history=1, depth=10)
-        self.publisher=self.create_publisher(publisher_msg, publishing_topic, qos_profile=qos)
+        self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
-        
-        publishing_period=1/rate
+        self.rate = 10
+        self.publishing_period = 1 / rate
 
         self.reachThreshold=0.01
 
