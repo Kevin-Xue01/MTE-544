@@ -30,6 +30,10 @@ class NoisyOdometry(Node):
         noisy_x = raw_x + np.random.normal(0, self.position_noise_stddev)
         noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
         noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
+        # Add Gaussian noise
+        # noisy_x = raw_x
+        # noisy_y = raw_y
+        # noisy_theta = raw_theta
 
         # Print both values
         print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")

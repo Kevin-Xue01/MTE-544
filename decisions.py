@@ -10,7 +10,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from controller import trajectoryController
 from localization import localization
 from pid import PID_ctrl
-from planner import POINT_PLANNER, SPIRAL_4TUNE, TRAJECTORY_PLANNER, planner
+from planner import planner
 from utilities import (
     LocalizationMode,
     calculate_angular_error,
@@ -22,14 +22,14 @@ from utilities import (
 class decision_maker(Node):
     def __init__(self):
         super().__init__("decision_maker")
-        self.type = LocalizationMode.RAW
+        self.type = LocalizationMode.EKF
         qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
         self.rate = 10
         self.publishing_period = 1 / self.rate
 
-        self.reachThreshold = 0.1
+        self.reachThreshold = 0.05
 
         self.localizer = localization(type=self.type)
         
@@ -53,7 +53,7 @@ class decision_maker(Node):
             print("reached goal")
             self.publisher.publish(vel_msg)
             raise SystemExit
-        print(self.localizer.getPose(), self.planner.traj)
+        print(self.localizer.getPose())
         velocity, yaw_rate = self.controller.vel_request(self.localizer.getPose(), self.planner.traj)
 
         vel_msg.linear.x = velocity

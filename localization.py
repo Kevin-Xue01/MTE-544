@@ -34,7 +34,7 @@ class localization(Node):
         if type == LocalizationMode.RAW:
             self.initRawSensors()
         elif type == LocalizationMode.EKF:
-            self.initKalmanfilter(dt)
+            self.initKalmanfilter()
         else:
             print("We don't have this type for localization", sys.stderr)
             return  

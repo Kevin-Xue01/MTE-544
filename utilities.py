@@ -19,12 +19,9 @@ class CSVLogger:
         self.headers = headers
         
         # Create and write headers if file is empty
-        try:
-            with open(self.filename, 'x', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(self.headers)
-        except FileExistsError:
-            pass  # File already exists, don't overwrite headers
+        with open(self.filename, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(self.headers)
 
     def log(self, data):
         """Append a row of data to the CSV file."""
