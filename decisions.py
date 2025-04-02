@@ -5,10 +5,10 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry as odom
 from rclpy import init, spin, spin_once
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 
-from controller import controller, trajectoryController
-from localization import kalmanFilter, localization, rawSensors
+from controller import trajectoryController
+from localization import localization
 from pid import PID_ctrl
 from planner import POINT_PLANNER, SPIRAL_4TUNE, TRAJECTORY_PLANNER, planner
 from utilities import (
@@ -23,17 +23,17 @@ class decision_maker(Node):
     def __init__(self):
         super().__init__("decision_maker")
         self.type = LocalizationMode.RAW
-        qos = QoSProfile(reliability=2, durability=2, history=1, depth=10)
+        qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
         self.rate = 10
         self.publishing_period = 1 / self.rate
 
-        self.reachThreshold = 0.01
+        self.reachThreshold = 0.1
 
-        self.localizer = localization(self.type)
+        self.localizer = localization(type=self.type)
         
-        self.controller = trajectoryController(self.type)
+        self.controller = trajectoryController(type=self.type)
         self.planner = planner()
         
         self.create_timer(self.publishing_period, self.timerCallback)
@@ -51,8 +51,9 @@ class decision_maker(Node):
 
         if reached_goal:
             print("reached goal")
+            self.publisher.publish(vel_msg)
             raise SystemExit
-        
+        print(self.localizer.getPose(), self.planner.traj)
         velocity, yaw_rate = self.controller.vel_request(self.localizer.getPose(), self.planner.traj)
 
         vel_msg.linear.x = velocity

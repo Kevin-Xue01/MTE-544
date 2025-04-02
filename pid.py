@@ -14,11 +14,11 @@ class ControllerType(Enum):
 
 # For the TODO items in this file, you can utilize your implementation from LAB-2 (if it was properly implemented)
 class PID_ctrl:
-    def __init__(self, _type: ControllerType = ControllerType.PID, kp=0.2, kv=0.2, ki=0.2, filename="errors.csv"):
+    def __init__(self, kp=0.2, kv=0.2, ki=0.2, filename="errors.csv"):
         # Data for the controller
         self.history_length = 3
         self.history = []
-        self.type = _type
+        self.type = ControllerType.PID
 
         # Controller gains
         self.kp = kp

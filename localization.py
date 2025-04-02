@@ -7,7 +7,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry as odom
 from rclpy import init, spin, spin_once
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import Imu
 
@@ -28,7 +28,7 @@ class localization(Node):
 
         self.logger = CSVLogger(f'{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
-        self.qos = QoSProfile(reliability=2, durability=2, history=1, depth=10)
+        self.qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.dt = dt
 
         if type == LocalizationMode.RAW:
@@ -92,7 +92,7 @@ class localization(Node):
         self.logger.log(self.pose)
       
     def odom_callback(self, pose_msg):
-        self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().nanoseconds]
+        self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
         self.logger.log(self.pose)
 
     def getPose(self):

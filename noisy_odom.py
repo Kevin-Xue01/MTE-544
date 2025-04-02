@@ -16,9 +16,8 @@ class NoisyOdometry(Node):
         self.odom_pub = self.create_publisher(Odometry, "/noisy_odom", 10)
 
         # Noise parameters
-        self.position_noise_stddev = 0.05  # 5cm noise
-        self.orientation_noise_stddev = 0.01  # Small rotational noise
-
+        self.position_noise_stddev = 0.01
+        self.orientation_noise_stddev = 0.001 
         self.get_logger().info("Noisy Odometry Node Started")
 
     def odom_callback(self, msg):
@@ -32,10 +31,10 @@ class NoisyOdometry(Node):
         noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
         noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
 
-        # # Print both values
-        # print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
-        # print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
-        # print("-" * 40)
+        # Print both values
+        print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
+        print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
+        print("-" * 40)
 
         # Create a new message with noisy data
         noisy_msg = Odometry()
