@@ -24,8 +24,8 @@ class kalman_filter:
         
         self.x = self.x + K @ (z - self.measurement_model())                        # Updated state estimate
 
-        self.P = (np.eye(self.A.shape[0]) - K @ self.C) @ self.P                    # Updated estimation covariance
-
+        # self.P = (np.eye(self.A.shape[0]) - K @ self.C) @ self.P                    # Updated estimation covariance
+        self.P = (np.eye(self.A.shape[0]) - K @ self.C) @ self.P @ (np.eye(self.A.shape[0]) - K @ self.C).T + K @ self.R @ K.T
     def measurement_model(self):
         x, y, th, w, v, vdot = self.x
         ax = vdot

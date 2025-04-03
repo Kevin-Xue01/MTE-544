@@ -45,9 +45,6 @@ class NoisyOdometry(Node):
 
         self.get_logger().info("Noisy Odometry Node Started (using OU process noise)")
 
-        self.odom_logger = CSVLogger("csv/odom.csv", ["x", "y", "v", "w"])
-        self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w"])
-
     def ornstein_uhlenbeck(self, x, theta, mu, sigma, dt):
         return x + theta * (mu - x) * dt + sigma * np.sqrt(dt) * np.random.randn()
 
@@ -70,11 +67,8 @@ class NoisyOdometry(Node):
         noisy_twist.linear.x += self.ou_noise_linear
         noisy_twist.angular.z += self.ou_noise_angular
         noisy_msg.twist.twist = noisy_twist
-
-        self.odom_logger.log([raw_x, raw_y, raw_v, raw_w])
-        self.noisy_logger.log([raw_x, raw_y, noisy_twist.linear.x, noisy_twist.angular.z])
-
-        self.odom_pub.publish(noisy_msg)
+        
+        self.odom_pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

@@ -43,6 +43,15 @@ class localization(Node):
 
         self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
         self.joint_state_logger = CSVLogger(f'csv/{type.name}_joint_state.csv', ["x", "y", "th", "stamp"])
+        self.imu_logger = CSVLogger(f'csv/imu.csv', ["ax", "ay", "stamp"])
+        self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
+
+        # Just for loggining, can remove later
+        self.odom_sub = self.create_subscription(odom, "/odom", self.log_odom, qos_profile=self.qos)
+        self.odom_logger = CSVLogger("csv/odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.odom_msg = None
+        
+        
 
     def initRawSensors(self):
         self.create_subscription(odom, "/noisy_odom", self.odom_callback, qos_profile=self.qos)
@@ -65,6 +74,22 @@ class localization(Node):
             [0.  , 0.  , 0.25, 0.  ],
             [0.  , 0.  , 0.  , 0.25],
         ])
+
+        # Q = np.array([
+        #     [1.00000000e-01, 0. , 0. , 0. , 0. , 0. ],
+        #     [0. , 1.00000000e-01, 0. , 0. , 0. , 0. ],
+        #     [0. , 0. , 1.00000000e-01, 0. , 0. , 0. ],
+        #     [0. , 0. , 0. , 4.87129269e+01, 0. , 0. ],
+        #     [0. , 0. , 0. , 0. , 5.22819884e+01, 0. ],
+        #     [0. , 0. , 0. , 0. , 0. , 1.00000000e-06],
+        # ])
+
+        # R = np.array([
+        #     [2.37939464e+00, 0.  , 0.  , 0.  ],
+        #     [0.  , 1.00000000e-06, 0.  , 0.  ],
+        #     [0.  , 0.  , 4.10168885e+00, 0.  ],
+        #     [0.  , 0.  , 0.  , 1.86933007e+00],
+        # ])
         
         P = Q.copy()
         
@@ -77,7 +102,8 @@ class localization(Node):
         time_syncher.registerCallback(self.fusion_callback)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
-        
+        if self.odom_msg is None:
+            return
         # TODO Part 3: Use the EKF to perform state estimation
         # Take the measurements
         # your measurements are the linear velocity and angular velocity from odom msg
@@ -105,10 +131,16 @@ class localization(Node):
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
 
-        self.ekf_logger.log(self.pose)
-
-        # Log grount truth
+        
+        stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
+        self.ekf_logger.log([xhat[0], xhat[1], xhat[2], stamp])
+        self.imu_logger.log([ax, ay, stamp])
+        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
       
+    def log_odom(self, msg):
+        self.odom_msg = msg
+    
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
         self.ekf_logger.log(self.pose)
