@@ -5,6 +5,26 @@ from rclpy.node import Node
 from utilities import CSVLogger
 from copy import deepcopy
 
+"""
+Ornstein-Uhlenbeck (OU) Noise Process Explanation:
+
+This noise method uses an Ornstein-Uhlenbeck process to generate time-correlated noise
+for the twist (velocity) measurements. The OU process is defined by the equation:
+
+    x_next = x_current + theta * (mu - x_current) * dt + sigma * sqrt(dt) * N(0, 1)
+
+where:
+    - theta is the rate of mean reversion (how quickly the noise reverts toward the mean),
+    - mu is the long-term mean (set to 0 for no sustained bias),
+    - sigma is the volatility (magnitude of the noise),
+    - dt is the time step, and
+    - N(0, 1) is a standard normal random variable.
+
+OU noise adds time-correlated errors that simulate persistent biases (e.g., wheel slip).
+Unlike white noise, these errors evolve over time, forcing the filter to continuously adapt.
+This results in a more realistic sensor simulation.
+"""
+
 class NoisyOdometry(Node):
     def __init__(self):
         super().__init__("noisy_odometry")
