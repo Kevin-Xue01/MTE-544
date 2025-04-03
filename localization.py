@@ -74,7 +74,7 @@ class localization(Node):
         ax = imu_msg.linear_acceleration.x
         ay = imu_msg.linear_acceleration.y
 
-        z=np.array([v,w,ax,ay]) #same structure as measurement model
+        z = np.array([v,w,ax,ay]) #same structure as measurement model
         
         # Implement the two steps for estimation
         self.kf.predict()

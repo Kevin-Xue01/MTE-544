@@ -16,8 +16,8 @@ class NoisyOdometry(Node):
         self.odom_pub = self.create_publisher(Odometry, "/noisy_odom", 10)
 
         # Noise parameters
-        self.position_noise_stddev = 0.01
-        self.orientation_noise_stddev = 0.001 
+        self.position_noise_stddev = 0.05
+        self.orientation_noise_stddev = 0.005 
         self.get_logger().info("Noisy Odometry Node Started")
 
     def odom_callback(self, msg):
@@ -30,7 +30,7 @@ class NoisyOdometry(Node):
         noisy_x = raw_x + np.random.normal(0, self.position_noise_stddev)
         noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
         noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
-        # Add Gaussian noise
+        # # Add Gaussian noise
         # noisy_x = raw_x
         # noisy_y = raw_y
         # noisy_theta = raw_theta

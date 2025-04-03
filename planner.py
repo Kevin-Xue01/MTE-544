@@ -13,7 +13,7 @@ class planner:
         radius = 2
         
         # Define angles corresponding to the given points
-        angles = np.linspace(-np.pi/2, 2.95*np.pi/2, 100)  # From (0,0) counterclockwise
+        angles = np.linspace(-np.pi/2, 2.9*np.pi/2, 100)  # From (0,0) counterclockwise
         
         # Compute the x, y coordinates of the circle
         x = center[0] + radius * np.cos(angles)
