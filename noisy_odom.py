@@ -2,58 +2,78 @@ import numpy as np
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from utilities import CSVLogger
+from copy import deepcopy
 
+"""
+Ornstein-Uhlenbeck (OU) Noise Process Explanation:
+
+This noise method uses an Ornstein-Uhlenbeck process to generate time-correlated noise
+for the twist (velocity) measurements. The OU process is defined by the equation:
+
+    x_next = x_current + theta * (mu - x_current) * dt + sigma * sqrt(dt) * N(0, 1)
+
+where:
+    - theta is the rate of mean reversion (how quickly the noise reverts toward the mean),
+    - mu is the long-term mean (set to 0 for no sustained bias),
+    - sigma is the volatility (magnitude of the noise),
+    - dt is the time step, and
+    - N(0, 1) is a standard normal random variable.
+
+OU noise adds time-correlated errors that simulate persistent biases (e.g., wheel slip).
+Unlike white noise, these errors evolve over time, forcing the filter to continuously adapt.
+This results in a more realistic sensor simulation.
+"""
 
 class NoisyOdometry(Node):
     def __init__(self):
         super().__init__("noisy_odometry")
 
-        # Subscribe to the original odometry topic
         self.odom_sub = self.create_subscription(
             Odometry, "/odom", self.odom_callback, 10)
 
-        # Publish the noisy odometry topic
         self.odom_pub = self.create_publisher(Odometry, "/noisy_odom", 10)
 
-        # Noise parameters
-        self.position_noise_stddev = 0.05
-        self.orientation_noise_stddev = 0.005 
-        self.get_logger().info("Noisy Odometry Node Started")
+        self.theta = 0.15
+        self.mu = 0.0
+        self.dt = 0.1
+        self.sigma_linear = 0.1
+        self.sigma_angular = 0.05
+
+        self.ou_noise_linear = 0.0
+        self.ou_noise_angular = 0.0
+
+        self.get_logger().info("Noisy Odometry Node Started (using OU process noise)")
+
+        self.odom_logger = CSVLogger("csv/odom.csv", ["x", "y", "v", "w"])
+        self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w"])
+
+    def ornstein_uhlenbeck(self, x, theta, mu, sigma, dt):
+        return x + theta * (mu - x) * dt + sigma * np.sqrt(dt) * np.random.randn()
 
     def odom_callback(self, msg):
-        # Extract raw odometry
         raw_x = msg.pose.pose.position.x
         raw_y = msg.pose.pose.position.y
-        raw_theta = msg.pose.pose.orientation.z  # Approximate yaw
+        raw_v = msg.twist.twist.linear.x
+        raw_w = msg.twist.twist.angular.z
 
-        # Add Gaussian noise
-        noisy_x = raw_x + np.random.normal(0, self.position_noise_stddev)
-        noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
-        noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
-        # # Add Gaussian noise
-        # noisy_x = raw_x
-        # noisy_y = raw_y
-        # noisy_theta = raw_theta
+        self.ou_noise_linear = self.ornstein_uhlenbeck(
+            self.ou_noise_linear, self.theta, self.mu, self.sigma_linear, self.dt)
+        self.ou_noise_angular = self.ornstein_uhlenbeck(
+            self.ou_noise_angular, self.theta, self.mu, self.sigma_angular, self.dt)
 
-        # Print both values
-        print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
-        print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
-        print("-" * 40)
-
-        # Create a new message with noisy data
         noisy_msg = Odometry()
         noisy_msg.header = msg.header
-        noisy_msg.pose.pose.position.x = noisy_x
-        noisy_msg.pose.pose.position.y = noisy_y
-        noisy_msg.pose.pose.position.z = msg.pose.pose.position.z  # No vertical noise
+        noisy_msg.pose.pose = msg.pose.pose
 
-        noisy_msg.pose.pose.orientation = msg.pose.pose.orientation  # Copy quaternion
-        noisy_msg.pose.pose.orientation.z += np.random.normal(0, self.orientation_noise_stddev)
-        noisy_msg.pose.pose.orientation.w += np.random.normal(0, self.orientation_noise_stddev)
+        noisy_twist = deepcopy(msg.twist.twist)
+        noisy_twist.linear.x += self.ou_noise_linear
+        noisy_twist.angular.z += self.ou_noise_angular
+        noisy_msg.twist.twist = noisy_twist
 
-        noisy_msg.twist = msg.twist  # Copy velocity
+        self.odom_logger.log([raw_x, raw_y, raw_v, raw_w])
+        self.noisy_logger.log([raw_x, raw_y, noisy_twist.linear.x, noisy_twist.angular.z])
 
-        # Publish noisy odometry
         self.odom_pub.publish(noisy_msg)
 
 def main(args=None):
