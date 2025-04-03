@@ -9,7 +9,7 @@ from rclpy import init, spin, spin_once
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, JointState
 
 from kalman_filter import kalman_filter
 from utilities import (
@@ -26,7 +26,6 @@ class localization(Node):
     def __init__(self, type: LocalizationMode = LocalizationMode.RAW, dt = 0.1):
         super().__init__("localizer")
 
-        self.logger = CSVLogger(f'csv/{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
         self.qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.dt = dt
@@ -38,6 +37,12 @@ class localization(Node):
         else:
             print("We don't have this type for localization", sys.stderr)
             return  
+        
+        self.joint_state_sub = self.create_subscription(JointState, "/joint_states", self.joint_states_callback, 10)
+        self.last_joint_state = None
+
+        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
+        self.joint_state_logger = CSVLogger(f'csv/{type.name}_joint_state.csv', ["x", "y", "th", "stamp"])
 
     def initRawSensors(self):
         self.create_subscription(odom, "/noisy_odom", self.odom_callback, qos_profile=self.qos)
@@ -100,14 +105,20 @@ class localization(Node):
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
 
-        self.logger.log(self.pose)
+        self.ekf_logger.log(self.pose)
+
+        # Log grount truth
       
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
-        self.logger.log(self.pose)
+        self.ekf_logger.log(self.pose)
 
     def getPose(self):
         return self.pose
+    
+    def joint_states_callback(self, msg):
+        self.last_joint_state = msg
+
 
 
 if __name__=="__main__":
