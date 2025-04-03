@@ -34,7 +34,7 @@ class decision_maker(Node):
         self.localizer = localization(type=self.type)
         
         self.controller = trajectoryController(type=self.type)
-        self.planner = planner()
+        self.planner = planner(type="zigzag")
         
         self.create_timer(self.publishing_period, self.timerCallback)
 

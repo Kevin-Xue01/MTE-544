@@ -53,11 +53,10 @@ class planner:
         # Generate a square trajectory
         side_length = 4
         path = [
-            (0, 0),
             (side_length, 0),
             (side_length, side_length),
             (0, side_length),
-            (0, 0)  # Closing the square
+            (0, 0.5)  # Closing the square
         ]
         return path
 

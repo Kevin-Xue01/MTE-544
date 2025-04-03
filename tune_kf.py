@@ -6,7 +6,6 @@ from kalman_filter import kalman_filter
 def load_csv(filename):
     return np.loadtxt(filename, delimiter=',', skiprows=1)
 
-# File paths
 ground_truth_file = 'csv/odom.csv'
 odom_file = 'csv/noisy_odom.csv'
 imu_file = 'csv/imu.csv'
@@ -16,11 +15,9 @@ odom_data = load_csv(odom_file)
 imu_data = load_csv(imu_file)
 
 def run_kf(q_diag, r_diag, odom_data, imu_data, gt_data):
-    # Build Q and R as diagonal matrices using the optimized parameters
-    Q = np.diag(q_diag)  # Q is 6x6
-    R = np.diag(r_diag)  # R is 4x4
+    Q = np.diag(q_diag)
+    R = np.diag(r_diag)
 
-    # Initialize state using ground truth (adjusted as per your original logic)
     x0, y0, v0, w0, _ = gt_data[0]
     x_init = np.array([x0, y0, 0.0, w0, v0, 0.0])
     P0 = 0.1 * np.eye(6)
@@ -41,17 +38,15 @@ def run_kf(q_diag, r_diag, odom_data, imu_data, gt_data):
     return np.array(estimates)
 
 def objective(params, odom_data, imu_data, gt_data):
-    # First 6 parameters are for Q's diagonal, next 4 are for R's diagonal
     q_diag = params[:6]
     r_diag = params[6:]
     est = run_kf(q_diag, r_diag, odom_data, imu_data, gt_data)
-    gt_positions = gt_data[1:, :2]  # Assuming the first two columns are x and y
+    gt_positions = gt_data[1:, :2]
     kf_positions = est[:, :2]
     mse = np.mean(np.sum((kf_positions - gt_positions)**2, axis=1))
     return mse
 
 def optimize_noise_params(odom_data, imu_data, gt_data):
-    # We now have 10 parameters: 6 for Q and 4 for R
     initial_guess = [1.00000000e-01, 1.00000000e-01, 1.00000000e-01, 4.87129269e+01,
                      5.22819884e+01, 1.00000000e-06, 2.37939464e+00, 1.00000000e-06,
                      4.10168885e+00, 1.86933007e+00]
@@ -79,9 +74,5 @@ def main():
     plt.legend()
     plt.show()
 
-
-
 if __name__ == "__main__":
     main()
-    
-

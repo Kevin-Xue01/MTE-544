@@ -41,8 +41,7 @@ class localization(Node):
         self.joint_state_sub = self.create_subscription(JointState, "/joint_states", self.joint_states_callback, 10)
         self.last_joint_state = None
 
-        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
-        self.joint_state_logger = CSVLogger(f'csv/{type.name}_joint_state.csv', ["x", "y", "th", "stamp"])
+        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])S
         self.imu_logger = CSVLogger(f'csv/imu.csv', ["ax", "ay", "stamp"])
         self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
 
@@ -58,22 +57,6 @@ class localization(Node):
         
     def initKalmanfilter(self):
         x = [0,0,0,0,0,0]
-        
-        # Q = np.array([
-        #     [0.5, 0. , 0. , 0. , 0. , 0. ],
-        #     [0. , 0.5, 0. , 0. , 0. , 0. ],
-        #     [0. , 0. , 0.5, 0. , 0. , 0. ],
-        #     [0. , 0. , 0. , 0.5, 0. , 0. ],
-        #     [0. , 0. , 0. , 0. , 0.5, 0. ],
-        #     [0. , 0. , 0. , 0. , 0. , 0.5],
-        # ])
-
-        # R = np.array([
-        #     [0.25, 0.  , 0.  , 0.  ],
-        #     [0.  , 0.25, 0.  , 0.  ],
-        #     [0.  , 0.  , 0.25, 0.  ],
-        #     [0.  , 0.  , 0.  , 0.25],
-        # ])
 
         Q = np.array([
             [1.00000000e-01, 0. , 0. , 0. , 0. , 0. ],
@@ -89,6 +72,22 @@ class localization(Node):
             [0.  , 1.00000000e-06, 0.  , 0.  ],
             [0.  , 0.  , 4.10168395e+00, 0.  ],
             [0.  , 0.  , 0.  , 1.73554297e+00],
+        ])
+
+        Q = np.array([
+            [0.5, 0. , 0. , 0. , 0. , 0. ],
+            [0. , 0.5, 0. , 0. , 0. , 0. ],
+            [0. , 0. , 0.5, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.5, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 0.5, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 0.5],
+        ])
+
+        R = np.array([
+            [0.25, 0.  , 0.  , 0.  ],
+            [0.  , 0.25, 0.  , 0.  ],
+            [0.  , 0.  , 0.25, 0.  ],
+            [0.  , 0.  , 0.  , 0.25],
         ])
         
         P = Q.copy()
