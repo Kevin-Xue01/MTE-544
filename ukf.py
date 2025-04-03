@@ -60,9 +60,9 @@ class ukf:
         dt = self.dt
 
         new_theta = theta + w * dt
-        new_x = x + v * np.cos(theta) * self.dt + 0.5 * vdot * self.dt**2 # update x
-        new_y = y + v * np.sin(theta) * self.dt + 0.5 * vdot * self.dt**2 # update y
-        new_v = v + vdot * self.dt # update velocity
+        new_x = x + v * np.cos(theta) * dt + 0.5 * vdot * dt**2 # update x
+        new_y = y + v * np.sin(theta) * dt + 0.5 * v * w * dt**2 # update y
+        new_v = v + vdot * dt # update velocity
 
         return np.array([new_x, new_y, new_theta, new_v, w, vdot])
 
@@ -70,8 +70,9 @@ class ukf:
         x, y, theta, v, w, vdot = state
 
         ax = vdot
+        ay = v * w
 
-        return np.array([v, w, ax])
+        return np.array([v, w, ax, ay])
 
     def get_states(self):
         return self.x

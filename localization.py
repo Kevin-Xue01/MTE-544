@@ -12,6 +12,7 @@ from rclpy.time import Time
 from sensor_msgs.msg import Imu
 
 from kalman_filter import kalman_filter
+from ukf import ukf
 from utilities import (
     CSVLogger,
     LocalizationMode,
@@ -35,6 +36,8 @@ class localization(Node):
             self.initRawSensors()
         elif type == LocalizationMode.EKF:
             self.initKalmanfilter()
+        elif type == LocalizationMode.UKF:
+            self.initUKF()
         else:
             print("We don't have this type for localization", sys.stderr)
             return  
@@ -70,6 +73,35 @@ class localization(Node):
         
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
         time_syncher.registerCallback(self.fusion_callback)
+
+    def initUKF(self):
+        x = [0,0,0,0,0,0]
+
+        Q = np.array([
+            [0.5, 0. , 0. , 0. , 0. , 0. ],
+            [0. , 0.5, 0. , 0. , 0. , 0. ],
+            [0. , 0. , 0.5, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.5, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 0.5, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 0.5],
+        ])
+
+        R = np.array([
+            [0.25, 0.  , 0.  , 0.  ],
+            [0.  , 0.25, 0.  , 0.  ],
+            [0.  , 0.  , 0.25, 0.  ],
+            [0.  , 0.  , 0.  , 0.25],
+        ])
+
+        P = Q.copy()
+
+        self.ukf = ukf(x, P, Q, R, self.dt)
+
+        self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
+        self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
+        
+        time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
+        time_syncher.registerCallback(self.fusion_callback)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
         
@@ -93,6 +125,37 @@ class localization(Node):
         
         # Get the estimate
         xhat=self.kf.get_states()
+        self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
+
+        # # TODO Part 4: log your data
+        # #presume kf_ax & kf_ay utilize kf values
+        # kf_ax = xhat[5]
+        # kf_ay = xhat[4]*xhat[3]
+
+        self.logger.log(self.pose)
+
+    def fusion_callback_ukf(self, odom_msg: odom, imu_msg: Imu):
+        
+        # TODO Part 3: Use the EKF to perform state estimation
+        # Take the measurements
+        # your measurements are the linear velocity and angular velocity from odom msg
+        # and linear acceleration in x and y from the imu msg
+        # the kalman filter should do a proper integration to provide x,y and filter ax,ay
+        #from odom
+        v = odom_msg.twist.twist.linear.x
+        w = odom_msg.twist.twist.angular.z
+        #from IMU
+        ax = imu_msg.linear_acceleration.x
+        ay = imu_msg.linear_acceleration.y
+
+        z = np.array([v,w,ax, ay]) #same structure as measurement model
+        
+        # Implement the two steps for estimation
+        self.ukf.predict()
+        self.ukf.update(z)
+        
+        # Get the estimate
+        xhat=self.ukf.get_states()
         self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
 
         # # TODO Part 4: log your data
