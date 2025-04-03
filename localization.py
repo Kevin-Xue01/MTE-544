@@ -24,7 +24,7 @@ from utilities import (
 # kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
 class localization(Node):
-    def __init__(self, type: LocalizationMode = LocalizationMode.RAW, dt = 0.1):
+    def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
         super().__init__("localizer")
 
         self.logger = CSVLogger(f'csv/{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
@@ -78,24 +78,31 @@ class localization(Node):
         x = [0,0,0,0,0,0]
 
         Q = np.array([
-            [0.5, 0. , 0. , 0. , 0. , 0. ],
-            [0. , 0.5, 0. , 0. , 0. , 0. ],
-            [0. , 0. , 0.5, 0. , 0. , 0. ],
-            [0. , 0. , 0. , 0.5, 0. , 0. ],
-            [0. , 0. , 0. , 0. , 0.5, 0. ],
-            [0. , 0. , 0. , 0. , 0. , 0.5],
+            [0.01, 0, 0, 0, 0, 0],   # x process noise
+            [0, 0.01, 0, 0, 0, 0],   # y process noise
+            [0, 0, 0.001, 0, 0, 0],  # theta process noise
+            [0, 0, 0, 0.1, 0, 0],    # v process noise
+            [0, 0, 0, 0, 0.01, 0],   # w process noise
+            [0, 0, 0, 0, 0, 0.001]  # vdot process noise
         ])
 
         R = np.array([
-            [0.25, 0.  , 0.  , 0.  ],
-            [0.  , 0.25, 0.  , 0.  ],
-            [0.  , 0.  , 0.25, 0.  ],
-            [0.  , 0.  , 0.  , 0.25],
+            [10.0, 0.0, 0.0, 0.0],   # Higher variance for velocity (v), indicating more uncertainty
+            [0.0, 0.0001, 0.0, 0.0], # Very small variance for angular velocity (w), very precise
+            [0.0, 0.0, 5.0, 0.0],    # Moderate variance for x acceleration (ax)
+            [0.0, 0.0, 0.0, 3.0]     # Moderate variance for y acceleration (ay)
         ])
 
-        P = Q.copy()
+        P = np.array([
+            [1.0, 0, 0, 0, 0, 0],    # x (position) uncertainty
+            [0, 1.0, 0, 0, 0, 0],    # y (position) uncertainty
+            [0, 0, 0.1, 0, 0, 0],    # theta (orientation) uncertainty
+            [0, 0, 0, 0.5, 0, 0],    # v (velocity) uncertainty
+            [0, 0, 0, 0, 0.1, 0],    # w (angular velocity) uncertainty
+            [0, 0, 0, 0, 0, 0.01]   # vdot (acceleration) uncertainty
+        ])
 
-        self.ukf = ukf(x, P, Q, R, self.dt)
+        self.ukf = ukf(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
 
         self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)

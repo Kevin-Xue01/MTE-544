@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.linalg
 
 class ukf:
 
@@ -24,16 +25,23 @@ class ukf:
         self.weights_cov[0] = (self.lmbda / (self.n + self.lmbda)) + (1 - pow(alpha, 2) + beta)
 
     def generate_sigma_points(self):
-        sqrt_P = np.linalg.cholesky(self.P + 1e-6 * np.eye(self.n)) # cholesky decomp with regulatization term
-        sigma_points = np.zeros((2 * self.n + 1, self.n))
-        sigma_points[0] = self.x
+        ret = np.zeros((self.n_sig, self.n))
+
+        tmp_mat = (self.n + self.lmbda)*self.P
+
+        # print spr_mat
+        spr_mat = scipy.linalg.sqrtm(tmp_mat)
+
+        ret[0] = self.x
         for i in range(self.n):
-            sigma_points[i + 1] = self.x + self.gamma * sqrt_P[i] # sigma point scaling
-            sigma_points[self.n + i + 1] = self.x - self.gamma * sqrt_P[i]
-        return sigma_points
+            ret[i+1] = self.x + spr_mat[:, i]  # Add column i of spr_mat to self.x
+            ret[i+1+self.n] = self.x - spr_mat[:, i]  # Subtract column i of spr_mat from self.x
+
+        return ret
 
     def predict(self):
         sigma_points = self.generate_sigma_points()
+        print(sigma_points.shape)
         predicted_sigma = np.array([self.process_model(s) for s in sigma_points]) 
         self.x = np.sum(self.weights_mean[:, None] * predicted_sigma, axis=0)
         self.P = np.sum(
@@ -56,6 +64,7 @@ class ukf:
         self.P -= K @ S @ K.T # covariance update
 
     def process_model(self, state):
+        print(f"State shape: {state.shape}")
         x, y, theta, v, w, vdot = state
         dt = self.dt
 
