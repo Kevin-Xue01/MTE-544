@@ -53,7 +53,7 @@ class decision_maker(Node):
             print("reached goal")
             self.publisher.publish(vel_msg)
             raise SystemExit
-        print(self.localizer.getPose())
+        
         velocity, yaw_rate = self.controller.vel_request(self.localizer.getPose(), self.planner.traj)
 
         vel_msg.linear.x = velocity

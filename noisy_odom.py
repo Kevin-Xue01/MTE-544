@@ -2,58 +2,45 @@ import numpy as np
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-
+from utilities import CSVLogger
+from copy import deepcopy
 
 class NoisyOdometry(Node):
     def __init__(self):
         super().__init__("noisy_odometry")
 
-        # Subscribe to the original odometry topic
         self.odom_sub = self.create_subscription(
             Odometry, "/odom", self.odom_callback, 10)
 
-        # Publish the noisy odometry topic
         self.odom_pub = self.create_publisher(Odometry, "/noisy_odom", 10)
 
-        # Noise parameters
-        self.position_noise_stddev = 0.05
-        self.orientation_noise_stddev = 0.005 
+        self.twist_linear_noise_stddev = 0.1
+        self.twist_angular_noise_stddev = 0.05
+
         self.get_logger().info("Noisy Odometry Node Started")
 
+        self.odom_logger = CSVLogger("odom.csv", ["x", "y", "v", "w"])
+        self.noisy_logger = CSVLogger("noisy_odom.csv", ["x", "y", "v", "w"])
+
     def odom_callback(self, msg):
-        # Extract raw odometry
         raw_x = msg.pose.pose.position.x
         raw_y = msg.pose.pose.position.y
-        raw_theta = msg.pose.pose.orientation.z  # Approximate yaw
+        raw_v = msg.twist.twist.linear.x
+        raw_w = msg.twist.twist.angular.z
 
-        # Add Gaussian noise
-        noisy_x = raw_x + np.random.normal(0, self.position_noise_stddev)
-        noisy_y = raw_y + np.random.normal(0, self.position_noise_stddev)
-        noisy_theta = raw_theta + np.random.normal(0, self.orientation_noise_stddev)
-        # # Add Gaussian noise
-        # noisy_x = raw_x
-        # noisy_y = raw_y
-        # noisy_theta = raw_theta
-
-        # Print both values
-        print(f"Raw Odom:  x={raw_x:.3f}, y={raw_y:.3f}, theta={raw_theta:.3f}")
-        print(f"Noisy Odom: x={noisy_x:.3f}, y={noisy_y:.3f}, theta={noisy_theta:.3f}")
-        print("-" * 40)
-
-        # Create a new message with noisy data
         noisy_msg = Odometry()
         noisy_msg.header = msg.header
-        noisy_msg.pose.pose.position.x = noisy_x
-        noisy_msg.pose.pose.position.y = noisy_y
-        noisy_msg.pose.pose.position.z = msg.pose.pose.position.z  # No vertical noise
 
-        noisy_msg.pose.pose.orientation = msg.pose.pose.orientation  # Copy quaternion
-        noisy_msg.pose.pose.orientation.z += np.random.normal(0, self.orientation_noise_stddev)
-        noisy_msg.pose.pose.orientation.w += np.random.normal(0, self.orientation_noise_stddev)
 
-        noisy_msg.twist = msg.twist  # Copy velocity
+        noisy_msg.pose.pose = msg.pose.pose
+        noisy_twist = deepcopy(msg.twist.twist)
+        noisy_twist.linear.x += np.random.normal(0, self.twist_linear_noise_stddev)
+        noisy_twist.angular.z += np.random.normal(0, self.twist_angular_noise_stddev)
+        noisy_msg.twist.twist = noisy_twist
 
-        # Publish noisy odometry
+        self.odom_logger.log([raw_x, raw_y, raw_v, raw_w])
+        self.noisy_logger.log([raw_x, raw_y, noisy_twist.linear.x, noisy_twist.angular.z])
+
         self.odom_pub.publish(noisy_msg)
 
 def main(args=None):

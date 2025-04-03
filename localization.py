@@ -26,7 +26,7 @@ class localization(Node):
     def __init__(self, type: LocalizationMode = LocalizationMode.RAW, dt = 0.1):
         super().__init__("localizer")
 
-        self.logger = CSVLogger(f'{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
+        self.logger = CSVLogger(f'csv/{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
         self.qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.dt = dt
@@ -45,15 +45,26 @@ class localization(Node):
     def initKalmanfilter(self):
         x = [0,0,0,0,0,0]
         
-        Q = 0.5 * np.eye(6)
+        Q = np.array([
+            [0.5, 0. , 0. , 0. , 0. , 0. ],
+            [0. , 0.5, 0. , 0. , 0. , 0. ],
+            [0. , 0. , 0.5, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.5, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 0.5, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 0.5],
+        ])
 
-        R = 0.25 * np.eye(4)
+        R = np.array([
+            [0.25, 0.  , 0.  , 0.  ],
+            [0.  , 0.25, 0.  , 0.  ],
+            [0.  , 0.  , 0.25, 0.  ],
+            [0.  , 0.  , 0.  , 0.25],
+        ])
         
-        P = np.eye(6) # initial covariance
+        P = Q.copy()
         
         self.kf = kalman_filter(P,Q,R, x, self.dt)
         
-        # TODO Part 3: Use the odometry and IMU data for the EKF
         self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
