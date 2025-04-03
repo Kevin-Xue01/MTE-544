@@ -101,7 +101,7 @@ class localization(Node):
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
-        time_syncher.registerCallback(self.fusion_callback)
+        time_syncher.registerCallback(self.fusion_callback_ukf)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
         

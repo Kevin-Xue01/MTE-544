@@ -60,8 +60,8 @@ class ukf:
         dt = self.dt
 
         new_theta = theta + w * dt
-        new_x = x + v * np.cos(theta) * dt + 0.5 * vdot * dt**2 # update x
-        new_y = y + v * np.sin(theta) * dt + 0.5 * v * w * dt**2 # update y
+        new_x = x + v * np.cos(theta) * dt # update x
+        new_y = y + v * np.sin(theta) * dt # update y
         new_v = v + vdot * dt # update velocity
 
         return np.array([new_x, new_y, new_theta, new_v, w, vdot])
