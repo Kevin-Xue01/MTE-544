@@ -57,7 +57,7 @@ def optimize_noise_params(datasets):
     return result
 
 def main():
-    folders = ["zigzag", "circular"]
+    folders = ["zigzag", "circular", "snake", "square", "sporadic"]
     datasets = []
     for folder in folders:
         datasets.append(load_dataset(folder))
