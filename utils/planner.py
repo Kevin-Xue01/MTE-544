@@ -28,10 +28,10 @@ class Planner:
         # print(self.traj)
 
     def generate_circular_path(self):
-        center = (0, 2)
+        center = (0, -2)
         radius = 2
         
-        angles = np.linspace(-np.pi/2, 2.9*np.pi/2, 100)
+        angles = np.linspace(np.pi/2, -2.9*np.pi/2, 100)
         
         x = center[0] + radius * np.cos(angles)
         y = center[1] + radius * np.sin(angles)

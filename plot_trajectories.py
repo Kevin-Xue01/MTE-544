@@ -4,8 +4,6 @@ from matplotlib import pyplot as plt
 
 base_folder = 'csv/0/'
 
-EST = False
-
 # Iterate through all subfolders in the base folder
 for folder in os.listdir(base_folder):
     folder_path = os.path.join(base_folder, folder)
@@ -22,21 +20,33 @@ for folder in os.listdir(base_folder):
             odom = pd.read_csv(odom_file)
             ekf_robotPose = pd.read_csv(ekf_file)
 
-            # Plot odometry and EKF estimate trajectories
+            # Plot odometry trajectory
             plt.figure(figsize=(10, 6))
             plt.plot(ground_truth['x'], ground_truth['y'], label='Ground Truth', color='black', alpha=0.7, linewidth=2.5)
             plt.plot(odom['x'], odom['y'], label='Odom', color='orange', alpha=0.7, linestyle='--')
-            if EST:
-                plt.plot(ekf_robotPose['x'], ekf_robotPose['y'], label='EKF Estimate', color='green', alpha=0.7, linestyle='-.')
             plt.xlabel('X (m)')
             plt.ylabel('Y (m)')
-            plt.title(f'Robot Trajectory - {folder} Path Type')
+            plt.title(f'Robot Trajectory - {folder} Path Type (Odom Only)')
             plt.legend()
             plt.grid()
 
-            # Save the plot to a file
-            if EST:
-                output_file = os.path.join(folder_path, f'{folder}_trajectory_est.png')
-            output_file = os.path.join(folder_path, f'{folder}_trajectory_odom.png')
-            plt.savefig(output_file)
+            # Save the odometry-only plot to a file
+            output_file_odom = os.path.join(folder_path, f'{folder}_trajectory_odom.png')
+            plt.savefig(output_file_odom)
+            plt.close()  # Close the plot to avoid displaying it
+
+            # Plot odometry + EKF estimate trajectory
+            plt.figure(figsize=(10, 6))
+            plt.plot(ground_truth['x'], ground_truth['y'], label='Ground Truth', color='black', alpha=0.7, linewidth=2.5)
+            plt.plot(odom['x'], odom['y'], label='Odom', color='orange', alpha=0.7, linestyle='--')
+            plt.plot(ekf_robotPose['x'], ekf_robotPose['y'], label='EKF Estimate', color='green', alpha=0.7, linestyle='-.')
+            plt.xlabel('X (m)')
+            plt.ylabel('Y (m)')
+            plt.title(f'Robot Trajectory - {folder} Path Type (Odom + EKF Estimate)')
+            plt.legend()
+            plt.grid()
+
+            # Save the odometry + EKF estimate plot to a file
+            output_file_est = os.path.join(folder_path, f'{folder}_trajectory_est.png')
+            plt.savefig(output_file_est)
             plt.close()  # Close the plot to avoid displaying it
