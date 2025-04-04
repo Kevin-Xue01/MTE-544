@@ -319,6 +319,13 @@ class Localization(Node):
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([x, y, v, w, stamp])
+        self.odom_logger.log([
+            self.odom_msg.pose.pose.position.x,
+            self.odom_msg.pose.pose.position.y,
+            self.odom_msg.twist.twist.linear.x,
+            self.odom_msg.twist.twist.angular.z,
+            stamp
+        ])
     
     def fusion_callback_ukf(self, joint_state_msg: JointState, imu_msg: Imu):
         if joint_state_msg is None:
@@ -361,15 +368,8 @@ class Localization(Node):
         self.noisy_logger.log([x, y, v, w, stamp])
 
     def log_odom(self, msg: Odometry):
-        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-        self.odom_logger.log([
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.twist.twist.linear.x,
-            msg.twist.twist.angular.z,
-            stamp
-        ])
-
+        self.odom_msg = msg
+        
     
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]

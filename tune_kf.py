@@ -9,10 +9,10 @@ def load_csv(filename):
     return np.loadtxt(filename, delimiter=',', skiprows=1)
 
 def load_dataset(folder):
-    upper_folder = "csv/baseline"
-    gt_data = load_csv(f'{upper_folder}/{folder}/odom.csv')
-    odom_data = load_csv(f'{upper_folder}/{folder}/noisy_odom.csv')
-    imu_data = load_csv(f'{upper_folder}/{folder}/imu.csv')
+    upper_folder = "csv/0/"
+    gt_data = load_csv(f'{upper_folder}/{folder}/EKF_odom.csv')
+    odom_data = load_csv(f'{upper_folder}/{folder}/EKF_noisy_odom.csv')
+    imu_data = load_csv(f'{upper_folder}/{folder}/EKF_imu.csv')
     return odom_data, imu_data, gt_data
 
 def run_kf(q_diag, r_diag, odom_data, imu_data, gt_data):
@@ -59,7 +59,7 @@ def optimize_noise_params(datasets):
     return result
 
 def main():
-    folders = ["zigzag", "circular", "snake", "square", "sporadic"]
+    folders = ["CIRCLE"]
     datasets = []
     for folder in folders:
         datasets.append(load_dataset(folder))
