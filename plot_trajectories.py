@@ -50,7 +50,7 @@ for folder in os.listdir(base_folder):
             plt.figure(figsize=(10, 6))
             plt.plot(ground_truth['x'], ground_truth['y'], label='Ground Truth', color='black', alpha=0.7, linewidth=2.5)
             plt.plot(odom['x'], odom['y'], label=f'DR (MSE={mse_odom:.4f})', color='orange', alpha=0.7, linestyle='--')
-            plt.plot(ekf_robotPose['x'], ekf_robotPose['y'], label=f'EKF Estimate (MSE={mse_ekf:.4f})', color='green', alpha=0.7, linestyle='-.')
+            plt.plot(ekf_robotPose['x'], ekf_robotPose['y'], label=f'{localization_mode.name} Estimate (MSE={mse_ekf:.4f})', color='green', alpha=0.7, linestyle='-.')
             plt.xlabel('X (m)')
             plt.ylabel('Y (m)')
             plt.title(f'Robot Trajectory - {folder} Path Type')
@@ -58,6 +58,6 @@ for folder in os.listdir(base_folder):
             plt.grid()
 
             # Save the odometry + EKF estimate plot to a file
-            output_file_est = os.path.join(folder_path, f'{folder}_trajectory_est.png')
+            output_file_est = os.path.join(folder_path, f'{folder}_{localization_mode.UKF}_trajectory_est.png')
             plt.savefig(output_file_est)
             plt.close()  # Close the plot to avoid displaying it
