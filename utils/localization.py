@@ -382,6 +382,13 @@ class Localization(Node):
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([x, y, v, w, stamp])
+        self.odom_logger.log([
+            self.odom_msg.pose.pose.position.x,
+            self.odom_msg.pose.pose.position.y,
+            self.odom_msg.twist.twist.linear.x,
+            self.odom_msg.twist.twist.angular.z,
+            stamp
+        ])
 
     def log_odom(self, msg: Odometry):
         self.odom_msg = msg

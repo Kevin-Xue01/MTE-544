@@ -42,7 +42,7 @@ for folder in os.listdir(base_folder):
             plt.grid()
 
             # Save the odometry-only plot to a file
-            output_file_odom = os.path.join(folder_path, f'{folder}_trajectory_odom.png')
+            output_file_odom = os.path.join(folder_path, f'{folder}_{localization_mode.name}_trajectory_odom.png')
             plt.savefig(output_file_odom)
             plt.close()  # Close the plot to avoid displaying it
 
@@ -58,6 +58,6 @@ for folder in os.listdir(base_folder):
             plt.grid()
 
             # Save the odometry + EKF estimate plot to a file
-            output_file_est = os.path.join(folder_path, f'{folder}_{localization_mode.UKF}_trajectory_est.png')
+            output_file_est = os.path.join(folder_path, f'{folder}_{localization_mode.name}_trajectory_est.png')
             plt.savefig(output_file_est)
             plt.close()  # Close the plot to avoid displaying it
