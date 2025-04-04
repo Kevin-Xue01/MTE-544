@@ -23,7 +23,7 @@ class Planner:
         else:
             raise ValueError(f"Unknown path type")
         
-        print(self.traj)
+        # print(self.traj)
 
     def generate_circular_path(self):
         center = (0, 2)
