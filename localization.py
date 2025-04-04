@@ -89,22 +89,15 @@ class localization(Node):
         R = np.array([
             [10.0, 0.0, 0.0, 0.0],   # Higher variance for velocity (v), indicating more uncertainty
             [0.0, 0.0001, 0.0, 0.0], # Very small variance for angular velocity (w), very precise
-            [0.0, 0.0, 5.0, 0.0],    # Moderate variance for x acceleration (ax)
-            [0.0, 0.0, 0.0, 3.0]     # Moderate variance for y acceleration (ay)
+            [0.0, 0.0, 1.0, 0.0],    # Moderate variance for x acceleration (ax)
+            [0.0, 0.0, 0.0, 1.0]     # Moderate variance for y acceleration (ay)
         ])
 
-        P = np.array([
-            [1.0, 0, 0, 0, 0, 0],    # x (position) uncertainty
-            [0, 1.0, 0, 0, 0, 0],    # y (position) uncertainty
-            [0, 0, 0.1, 0, 0, 0],    # theta (orientation) uncertainty
-            [0, 0, 0, 0.5, 0, 0],    # v (velocity) uncertainty
-            [0, 0, 0, 0, 0.1, 0],    # w (angular velocity) uncertainty
-            [0, 0, 0, 0, 0, 0.01]   # vdot (acceleration) uncertainty
-        ])
+        P = Q.copy()
 
         self.ukf = ukf(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
 
-        self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
+        self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
