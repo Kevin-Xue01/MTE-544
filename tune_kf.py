@@ -77,12 +77,6 @@ def main():
     print("Q diagonals (process noise):", result.x[:6])
     print("R diagonals (measurement noise):", result.x[6:])
     print("Objective (avg. MSE):", result.fun)
-    
-    
-    base_folder = 'csv/0/'
-
-
-    base_folder = 'csv/0/'
 
     # Iterate through all subfolders in the base folder
     for folder in os.listdir(base_folder):

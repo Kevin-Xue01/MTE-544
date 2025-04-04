@@ -6,7 +6,7 @@ from .constants import ControllerType, LocalizationMode, PathType
 class Config(BaseModel):
     localization_mode: LocalizationMode = LocalizationMode.UKF
     controller_type: ControllerType = ControllerType.PID
-    path_type: PathType = PathType.SQUARE
+    path_type: PathType = PathType.CIRCLE
     training_iteration: int = 0
     klp: float = 0.2 
     klv: float = 0.5 
