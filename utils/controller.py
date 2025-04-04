@@ -14,7 +14,7 @@ M_PI=3.1415926535
 P=0; PD=1; PI=2; PID=3
 
 class trajectoryController:
-    def __init__(self, type = LocalizationMode.RAW, klp=0.2, klv=0.5, kli=0.2, kap=0.8, kav=0.6, kai=0.2):
+    def __init__(self, klp=0.2, klv=0.5, kli=0.2, kap=0.8, kav=0.6, kai=0.2):
         self.PID_linear=PID_ctrl(kp=klp, kv=klv, ki=kli,)
         self.PID_angular=PID_ctrl(kp=kap, kv=kav, ki=kai)
     

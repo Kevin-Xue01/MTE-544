@@ -21,15 +21,16 @@ from .helper import (
 )
 from .ukf import UKF
 
-# kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
 class Localization(Node):
-    def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
+    def __init__(self, type: LocalizationMode, dt = 0.1):
         super().__init__("localizer")
 
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
         self.qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.dt = dt
+        self.last_joint_state = None
+        self.odom_msg = None
 
         if type == LocalizationMode.RAW:
             self.initRawSensors()
@@ -41,17 +42,12 @@ class Localization(Node):
             print("We don't have this type for localization", sys.stderr)
             return
         
-        self.joint_state_sub = self.create_subscription(JointState, "/joint_states", self.joint_states_callback, 10)
-        self.last_joint_state = None
+        self.est_logger = CSVLogger(f'csv/{type.name}_robotPose.csv', ["x", "y", "th", "stamp"])
+        self.imu_logger = CSVLogger(f'csv/{type.name}_imu.csv', ["ax", "ay", "stamp"])
+        self.noisy_logger = CSVLogger(f"csv/{type.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
 
-        self.est_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
-        self.imu_logger = CSVLogger(f'csv/imu.csv', ["ax", "ay", "stamp"])
-        self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
-
-        # Just for loggining, can remove later
+        self.odom_logger = CSVLogger(f"csv/{type.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
         self.odom_sub = self.create_subscription(odom, "/odom", self.log_odom, qos_profile=self.qos)
-        self.odom_logger = CSVLogger("csv/odom.csv", ["x", "y", "v", "w", "stamp"])
-        self.odom_msg = None
         
     def initRawSensors(self):
         self.create_subscription(odom, "/noisy_odom", self.odom_callback, qos_profile=self.qos)
@@ -75,31 +71,15 @@ class Localization(Node):
             [0.  , 0.  , 0.  , 3.72916777e-02],
         ])
 
-        # Q = np.array([
-        #     [0.5, 0. , 0. , 0. , 0. , 0. ],
-        #     [0. , 0.5, 0. , 0. , 0. , 0. ],
-        #     [0. , 0. , 0.5, 0. , 0. , 0. ],
-        #     [0. , 0. , 0. , 0.5, 0. , 0. ],
-        #     [0. , 0. , 0. , 0. , 0.5, 0. ],
-        #     [0. , 0. , 0. , 0. , 0. , 0.5],
-        # ])
-
-        # R = np.array([
-        #     [0.25, 0.  , 0.  , 0.  ],
-        #     [0.  , 0.25, 0.  , 0.  ],
-        #     [0.  , 0.  , 0.25, 0.  ],
-        #     [0.  , 0.  , 0.  , 0.25],
-        # ])
-        
         P = Q.copy()
         
-        self.kf = EKF(P,Q,R, x, self.dt)
+        self.ekf = EKF(P,Q,R, x, self.dt)
         
         self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
-        time_syncher.registerCallback(self.fusion_callback)
+        time_syncher.registerCallback(self.fusion_callback_ekf)
     
     def initUKF(self):
         x = [0,0,0,0,0,0]
@@ -131,7 +111,7 @@ class Localization(Node):
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
         time_syncher.registerCallback(self.fusion_callback_ukf)
 
-    def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
+    def fusion_callback_ekf(self, odom_msg: odom, imu_msg: Imu):
         if self.odom_msg is None:
             return
         # TODO Part 3: Use the EKF to perform state estimation
@@ -149,11 +129,11 @@ class Localization(Node):
         z = np.array([v,w,ax,ay]) #same structure as measurement model
         
         # Implement the two steps for estimation
-        self.kf.predict()
-        self.kf.update(z)
+        self.ekf.predict()
+        self.ekf.update(z)
         
         # Get the estimate
-        xhat=self.kf.get_states()
+        xhat=self.ekf.get_states()
         self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
 
         # # TODO Part 4: log your data
@@ -161,12 +141,10 @@ class Localization(Node):
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
 
-        
         stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
-        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
     
     def fusion_callback_ukf(self, odom_msg: odom, imu_msg: Imu):
         if self.odom_msg is None:
@@ -202,10 +180,10 @@ class Localization(Node):
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
-        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
 
-    def log_odom(self, msg):
-        self.odom_msg = msg
+    def log_odom(self, msg: odom):
+        self.odom_logger.log([msg.pose.pose.position.x, msg.pose.pose.position.y, msg.twist.twist.linear.x, msg.twist.twist.angular.z, self.get_clock().now()])
+        
     
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
@@ -214,9 +192,6 @@ class Localization(Node):
     def getPose(self):
         return self.pose
     
-    def joint_states_callback(self, msg):
-        self.last_joint_state = msg
-
 
 
 if __name__=="__main__":

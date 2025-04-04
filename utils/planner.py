@@ -1,25 +1,30 @@
 import math
 from math import atan, atan2, cos, sin, pi
 import numpy as np
+from enum import Enum, auto
+
+class PathType(Enum):
+    CIRCLE = auto()
+    ZIGZAG = auto()
+    SPORADIC = auto()
+    SQUARE = auto()
+    SNAKE = auto()
 
 
 class planner:
-    def __init__(self, type="circular"):
-        self.type = type
-        if self.type == "circular":
+    def __init__(self, _type: PathType):
+        if _type == PathType.CIRCLE:
             self.traj = self.generate_circular_path()
-        elif self.type == "zigzag":
+        elif _type == PathType.ZIGZAG:
             self.traj = self.generate_zigzag_path()
-        elif self.type == "sporadic":
+        elif _type == PathType.SPORADIC:
             self.traj = self.generate_spuratic_path()
-        elif self.type == "square":
+        elif _type == PathType.SQUARE:
             self.traj = self.generate_square_path()
-        elif self.type == "out_and_back":
-            self.traj = self.generate_out_and_back_path()
-        elif self.type == "snake":
+        elif _type == PathType.SNAKE:
             self.traj = self.generate_snake_path()
         else:
-            raise ValueError(f"Unknown path type: {self.type}")
+            raise ValueError(f"Unknown path type")
         
         print(self.traj)
 
@@ -67,13 +72,13 @@ class planner:
             path.append((0, side_length - i * side_length / num_points_per_side))
         return path
 
-    def generate_out_and_back_path(self):
-        path = []
-        for i in range(5):
-            path.append((i, 0))
-        for i in range(5, 3, -1):
-            path.append((i, 0))
-        return path
+    # def generate_out_and_back_path(self):
+    #     path = []
+    #     for i in range(5):
+    #         path.append((i, 0))
+    #     for i in range(5, 3, -1):
+    #         path.append((i, 0))
+    #     return path
 
     def generate_snake_path(self):
         path = []

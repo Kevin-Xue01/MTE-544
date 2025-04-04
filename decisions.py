@@ -17,24 +17,26 @@ from utils.helper import (
 from utils.localization import Localization
 from utils.pid import PID_ctrl
 from utils.planner import planner
+from utils import PathType
 
 
 class decision_maker(Node):
     def __init__(self):
         super().__init__("decision_maker")
-        self.type = LocalizationMode.UKF
+        self.localization_mode = LocalizationMode.UKF
+        self.planner_type = PathType.CIRCLE
+
         qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
         self.rate = 10
         self.publishing_period = 1 / self.rate
-
         self.reachThreshold = 0.05
 
-        self.localizer = Localization(type=self.type)
+        self.localizer = Localization(type=self.localization_mode)
         
-        self.controller = trajectoryController(type=self.type)
-        self.planner = planner(type="circular")
+        self.controller = trajectoryController()
+        self.planner = planner(self.planner_type)
         
         self.create_timer(self.publishing_period, self.timerCallback)
 
