@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from utils import EKF
+import os
 
 
 def load_csv(filename):
@@ -52,14 +53,15 @@ def objective_multi(params, datasets):
     return avg_mse
 
 def optimize_noise_params(datasets):
-    initial_guess = [0.1, 0.1, 0.1, 0.248914773, 1e-6, 0.0237562553, 
-                     0.693434422, 1e-6, 3.04253728, 0.715754008]
+    Q = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    R = [0.25, 0.25, 0.25, 0.25]
+    initial_guess = np.concatenate((Q, R))
     bounds = [(1e-6, None)] * 10
     result = minimize(objective_multi, initial_guess, args=(datasets,), bounds=bounds)
     return result
 
 def main():
-    folders = ["CIRCLE"]
+    folders = ["CIRCLE", "ZIGZAG", "SPORADIC", "SQUARE", "SNAKE", "MIXED"]
     datasets = []
     for folder in folders:
         datasets.append(load_dataset(folder))
@@ -70,19 +72,42 @@ def main():
     print("R diagonals (measurement noise):", result.x[6:])
     print("Objective (avg. MSE):", result.fun)
     
-    for idx, (odom_data, imu_data, gt_data) in enumerate(datasets):
-        est = run_kf(result.x[:6], result.x[6:], odom_data, imu_data, gt_data)
-        gt_positions = gt_data[1:, :2]
-        kf_positions = est[:, :2]
-        
-        plt.figure()
-        plt.plot(gt_positions[:, 0], gt_positions[:, 1], label="Ground Truth", marker='o', linestyle='-')
-        plt.plot(kf_positions[:, 0], kf_positions[:, 1], label="KF Estimate", marker='x', linestyle='--')
-        plt.xlabel("X")
-        plt.ylabel("Y")
-        plt.title(f"Dataset {idx+1}: KF Fusion - Estimated Trajectory vs. Ground Truth")
-        plt.legend()
-        plt.show()
+    base_folder = 'csv/0/'
+
+    # Iterate through all subfolders in the base folder
+    for folder in os.listdir(base_folder):
+        folder_path = os.path.join(base_folder, folder)
+        if os.path.isdir(folder_path):  # Ensure it's a folder
+            # Define file paths
+            ground_truth_file = os.path.join(folder_path, 'EKF_odom.csv')  # x,y,v,w
+            odom_file = os.path.join(folder_path, 'EKF_noisy_odom.csv')  # x,y,v,w
+            imu_file = os.path.join(folder_path, 'EKF_imu.csv')  # ax,ay
+            if os.path.exists(ground_truth_file) and os.path.exists(odom_file) and os.path.exists(imu_file):
+                # Load data
+                ground_truth = load_csv(ground_truth_file)
+                odom = load_csv(odom_file)
+                imu = load_csv(imu_file)
+
+                # Use the optimal parameters from tuning
+                optimal_q_diag = result.x[:6]
+                optimal_r_diag = result.x[6:]
+                estimates = run_kf(optimal_q_diag, optimal_r_diag, odom, imu, ground_truth)
+
+                # Plot odometry + EKF estimate trajectory
+                plt.figure(figsize=(10, 6))
+                plt.plot(ground_truth[:, 0], ground_truth[:, 1], label='Ground Truth', color='black', alpha=0.7, linewidth=2.5)
+                plt.plot(odom[:, 0], odom[:, 1], label='Odom', color='orange', alpha=0.7, linestyle='--')
+                plt.plot(estimates[:, 0], estimates[:, 1], label='EKF Estimate', color='green', alpha=0.7, linestyle='-.')
+                plt.xlabel('X (m)')
+                plt.ylabel('Y (m)')
+                plt.title(f'Robot Trajectory - {folder} Path Type (Odom + EKF Estimate)')
+                plt.legend()
+                plt.grid()
+
+                # Save the odometry + EKF estimate plot to a file
+                output_file_est = os.path.join(folder_path, f'{folder}_trajectory_trained.png')
+                plt.savefig(output_file_est)
+                plt.close()  # Close the plot to avoid displaying it
 
 if __name__ == "__main__":
     main()
