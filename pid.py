@@ -25,9 +25,6 @@ class PID_ctrl:
         self.kv = kv
         self.ki = ki
         
-        self.logger = CSVLogger(filename, ["e", "e_dot", "e_int", "time"])
-
-    
     def update(self, stamped_error, status):
         
         if status == False:
@@ -80,9 +77,6 @@ class PID_ctrl:
         
         error_int=sum_*dt_avg
         
-        # Log your errors
-        self.logger.log([latest_error, error_dot, error_int, Time.from_msg(stamp).nanoseconds])
-
         # Control law corresponding to each type of controller
         if self.type == ControllerType.P:
             return self.kp * latest_error
