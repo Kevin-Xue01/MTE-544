@@ -41,7 +41,6 @@ class ukf:
 
     def predict(self):
         sigma_points = self.generate_sigma_points()
-        print(sigma_points.shape)
         predicted_sigma = np.array([self.process_model(s) for s in sigma_points]) 
         self.x = np.sum(self.weights_mean[:, None] * predicted_sigma, axis=0)
         self.P = np.sum(

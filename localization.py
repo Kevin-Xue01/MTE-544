@@ -161,8 +161,47 @@ class localization(Node):
         # #presume kf_ax & kf_ay utilize kf values
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
+        
+        stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
+        self.ekf_logger.log([xhat[0], xhat[1], xhat[2], stamp])
+        self.imu_logger.log([ax, ay, stamp])
+        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+    
+    def fusion_callback_ukf(self, odom_msg: odom, imu_msg: Imu):
+        
+        # TODO Part 3: Use the EKF to perform state estimation
+        # Take the measurements
+        # your measurements are the linear velocity and angular velocity from odom msg
+        # and linear acceleration in x and y from the imu msg
+        # the kalman filter should do a proper integration to provide x,y and filter ax,ay
+        #from odom
+        v = odom_msg.twist.twist.linear.x
+        w = odom_msg.twist.twist.angular.z
+        #from IMU
+        ax = imu_msg.linear_acceleration.x
+        ay = imu_msg.linear_acceleration.y
+
+        z = np.array([v,w,ax, ay]) #same structure as measurement model
+        
+        # Implement the two steps for estimation
+        self.ukf.predict()
+        self.ukf.update(z)
+        
+        # Get the estimate
+        xhat=self.ukf.get_states()
+        self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
+
+        # # TODO Part 4: log your data
+        # #presume kf_ax & kf_ay utilize kf values
+        # kf_ax = xhat[5]
+        # kf_ay = xhat[4]*xhat[3]
 
         self.logger.log(self.pose)
+        self.imu_logger.log([ax, ay, stamp])
+        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+    
       
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
