@@ -22,7 +22,7 @@ from utilities import (
 class decision_maker(Node):
     def __init__(self):
         super().__init__("decision_maker")
-        self.type = LocalizationMode.UKF
+        self.type = LocalizationMode.EKF
         qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
@@ -34,7 +34,7 @@ class decision_maker(Node):
         self.localizer = localization(type=self.type)
         
         self.controller = trajectoryController(type=self.type)
-        self.planner = planner(type="snake")
+        self.planner = planner(type="circular")
         
         self.create_timer(self.publishing_period, self.timerCallback)
 

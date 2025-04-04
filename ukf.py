@@ -63,7 +63,6 @@ class ukf:
         self.P -= K @ S @ K.T # covariance update
 
     def process_model(self, state):
-        print(f"State shape: {state.shape}")
         x, y, theta, v, w, vdot = state
         dt = self.dt
 

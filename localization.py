@@ -12,7 +12,6 @@ from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 
 from kalman_filter import kalman_filter
-from ukf import ukf
 from utilities import (
     CSVLogger,
     LocalizationMode,
@@ -24,7 +23,7 @@ from utilities import (
 # kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
 class localization(Node):
-    def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
+    def __init__(self, type: LocalizationMode = LocalizationMode.RAW, dt = 0.1):
         super().__init__("localizer")
 
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
@@ -35,8 +34,6 @@ class localization(Node):
             self.initRawSensors()
         elif type == LocalizationMode.EKF:
             self.initKalmanfilter()
-        elif type == LocalizationMode.UKF:
-            self.initUKF()
         else:
             print("We don't have this type for localization", sys.stderr)
             return  
@@ -102,35 +99,6 @@ class localization(Node):
         
         time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
         time_syncher.registerCallback(self.fusion_callback)
-
-    def initUKF(self):
-        x = [0,0,0,0,0,0]
-
-        Q = np.array([
-            [0.01, 0, 0, 0, 0, 0],   # x process noise
-            [0, 0.01, 0, 0, 0, 0],   # y process noise
-            [0, 0, 0.001, 0, 0, 0],  # theta process noise
-            [0, 0, 0, 0.1, 0, 0],    # v process noise
-            [0, 0, 0, 0, 0.01, 0],   # w process noise
-            [0, 0, 0, 0, 0, 0.001]  # vdot process noise
-        ])
-
-        R = np.array([
-            [10.0, 0.0, 0.0, 0.0],   # Higher variance for velocity (v), indicating more uncertainty
-            [0.0, 0.0001, 0.0, 0.0], # Very small variance for angular velocity (w), very precise
-            [0.0, 0.0, 1.0, 0.0],    # Moderate variance for x acceleration (ax)
-            [0.0, 0.0, 0.0, 1.0]     # Moderate variance for y acceleration (ay)
-        ])
-
-        P = Q.copy()
-
-        self.ukf = ukf(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
-
-        self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile = self.qos)
-        self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
-        
-        time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size = 10, slop = 0.1)
-        time_syncher.registerCallback(self.fusion_callback_ukf)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
         if self.odom_msg is None:
@@ -161,13 +129,14 @@ class localization(Node):
         # #presume kf_ax & kf_ay utilize kf values
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
+
         
         stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
         self.ekf_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
         self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
-    
+      
     def fusion_callback_ukf(self, odom_msg: odom, imu_msg: Imu):
         
         # TODO Part 3: Use the EKF to perform state estimation
@@ -198,11 +167,10 @@ class localization(Node):
         # kf_ay = xhat[4]*xhat[3]
 
         self.logger.log(self.pose)
-        self.imu_logger.log([ax, ay, stamp])
-        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
-        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
     
-      
+    def log_odom(self, msg):
+        self.odom_msg = msg
+    
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
         self.ekf_logger.log(self.pose)
