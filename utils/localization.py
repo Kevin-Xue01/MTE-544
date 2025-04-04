@@ -43,11 +43,11 @@ class Localization(Node):
             print("We don't have this type for localization", sys.stderr)
             return
         
-        self.est_logger = CSVLogger(f'csv/{_config.localization_mode.name}_robotPose.csv', ["x", "y", "th", "stamp"])
-        self.imu_logger = CSVLogger(f'csv/{_config.localization_mode.name}_imu.csv', ["ax", "ay", "stamp"])
-        self.noisy_logger = CSVLogger(f"csv/{_config.localization_mode.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.est_logger = CSVLogger(f'csv/{_config.training_iteration}/{_config.path_type.name}/{_config.localization_mode.name}_robotPose.csv', ["x", "y", "th", "stamp"])
+        self.imu_logger = CSVLogger(f'csv/{_config.training_iteration}/{_config.path_type.name}/{_config.localization_mode.name}_imu.csv', ["ax", "ay", "stamp"])
+        self.noisy_logger = CSVLogger(f"csv/{_config.training_iteration}/{_config.path_type.name}/{_config.localization_mode.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
 
-        self.odom_logger = CSVLogger(f"csv/{_config.localization_mode.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.odom_logger = CSVLogger(f"csv/{_config.training_iteration}/{_config.path_type.name}/{_config.localization_mode.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
         self.odom_sub = self.create_subscription(odom, "/odom", self.log_odom, qos_profile=self.qos)
         
     def initRawSensors(self):
@@ -104,7 +104,7 @@ class Localization(Node):
 
         P = Q.copy()
 
-        self.ukf = UKF(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
+        self.ukf = UKF(x, P, Q, R, self.dt,)
 
         self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)

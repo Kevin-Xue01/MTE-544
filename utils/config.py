@@ -4,7 +4,7 @@ from .constants import ControllerType, LocalizationMode, PathType
 
 
 class Config(BaseModel):
-    localization_mode: LocalizationMode = LocalizationMode.UKF
+    localization_mode: LocalizationMode = LocalizationMode.EKF
     controller_type: ControllerType = ControllerType.PID
     path_type: PathType = PathType.CIRCLE
     training_iteration: int = 0
