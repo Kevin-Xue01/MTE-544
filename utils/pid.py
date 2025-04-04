@@ -2,23 +2,18 @@ from enum import Enum, auto
 
 from rclpy.time import Time
 
+from .config import _config
+from .constants import ControllerType
 from .helper import CSVLogger
 
 
-class ControllerType(Enum):
-    P = auto() # poportional
-    PD = auto() # proportional and derivative
-    PI = auto() # proportional and integral
-    PID = auto() # proportional, integral, derivative
-
-
 # For the TODO items in this file, you can utilize your implementation from LAB-2 (if it was properly implemented)
-class PID_ctrl:
-    def __init__(self, kp=0.2, kv=0.2, ki=0.2):
+class PID:
+    def __init__(self, kp, kv, ki):
         # Data for the controller
         self.history_length = 3
         self.history = []
-        self.type = ControllerType.PID
+        # self.type = ControllerType.PID
 
         # Controller gains
         self.kp = kp
@@ -78,15 +73,15 @@ class PID_ctrl:
         error_int=sum_*dt_avg
         
         # Control law corresponding to each type of controller
-        if self.type == ControllerType.P:
+        if _config.controller_type == ControllerType.P:
             return self.kp * latest_error
         
-        elif self.type == ControllerType.PD:
+        elif _config.controller_type == ControllerType.PD:
             return self.kp * latest_error + self.kv * error_dot
         
-        elif self.type == ControllerType.PI:
+        elif _config.controller_type == ControllerType.PI:
             return self.kp * latest_error +  self.ki * error_int
         
-        elif self.type == ControllerType.PID:
+        elif _config.controller_type == ControllerType.PID:
             
             return self.kp * latest_error + self.kv * error_dot + self.ki * error_int

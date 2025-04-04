@@ -1,27 +1,24 @@
 import math
-from math import atan, atan2, cos, sin, pi
-import numpy as np
 from enum import Enum, auto
+from math import atan, atan2, cos, pi, sin
 
-class PathType(Enum):
-    CIRCLE = auto()
-    ZIGZAG = auto()
-    SPORADIC = auto()
-    SQUARE = auto()
-    SNAKE = auto()
+import numpy as np
+
+from .config import _config
+from .constants import PathType
 
 
-class planner:
-    def __init__(self, _type: PathType):
-        if _type == PathType.CIRCLE:
+class Planner:
+    def __init__(self):
+        if _config.path_type == PathType.CIRCLE:
             self.traj = self.generate_circular_path()
-        elif _type == PathType.ZIGZAG:
+        elif _config.path_type == PathType.ZIGZAG:
             self.traj = self.generate_zigzag_path()
-        elif _type == PathType.SPORADIC:
+        elif _config.path_type == PathType.SPORADIC:
             self.traj = self.generate_spuratic_path()
-        elif _type == PathType.SQUARE:
+        elif _config.path_type == PathType.SQUARE:
             self.traj = self.generate_square_path()
-        elif _type == PathType.SNAKE:
+        elif _config.path_type == PathType.SNAKE:
             self.traj = self.generate_snake_path()
         else:
             raise ValueError(f"Unknown path type")

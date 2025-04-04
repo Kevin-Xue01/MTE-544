@@ -1,17 +1,9 @@
-from math import asin, atan2, sqrt
-
-M_PI=3.1415926535
 import csv
-import logging
-from enum import Enum, auto
+from math import asin, atan2, sqrt
 
 import numpy as np
 
-
-class LocalizationMode(Enum):
-    RAW = auto()
-    EKF = auto()
-    UKF = auto() 
+M_PI=3.1415926535
 
 class CSVLogger:
     def __init__(self, filename, headers):

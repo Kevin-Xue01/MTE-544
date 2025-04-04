@@ -1,9 +1,11 @@
 import numpy as np
 import scipy.linalg
 
+from .config import _config
+
 
 class UKF:
-    def __init__(self, x, P, Q, R, dt, alpha=1e-3, kappa=0, beta=2):
+    def __init__(self, x, P, Q, R, dt):
         self.n = len(x) # state dimension
         self.n_sig = 1 + self.n * 2 # number of sigma points
 
@@ -15,14 +17,14 @@ class UKF:
         self.dt = dt  # Time step
 
         # Compute lambda and weights for sigma points
-        self.lmbda = alpha**2 * (self.n + kappa) - self.n
+        self.lmbda = _config.alpha**2 * (self.n + _config.kappa) - self.n
         self.gamma = np.sqrt(self.n + self.lmbda)
         
         self.weights_mean = np.full(2 * self.n + 1, 0.5 / (self.n + self.lmbda)) # initialize
         self.weights_cov = np.copy(self.weights_mean) # initialize
 
         self.weights_mean[0] = self.lmbda / (self.n + self.lmbda)
-        self.weights_cov[0] = (self.lmbda / (self.n + self.lmbda)) + (1 - pow(alpha, 2) + beta)
+        self.weights_cov[0] = (self.lmbda / (self.n + self.lmbda)) + (1 - pow(_config.alpha, 2) + _config.beta)
 
     def generate_sigma_points(self):
         ret = np.zeros((self.n_sig, self.n))

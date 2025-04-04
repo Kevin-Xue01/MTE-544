@@ -11,10 +11,11 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 
+from .config import _config
+from .constants import LocalizationMode
 from .ekf import EKF
 from .helper import (
     CSVLogger,
-    LocalizationMode,
     calculate_angular_error,
     calculate_linear_error,
     euler_from_quaternion,
@@ -23,7 +24,7 @@ from .ukf import UKF
 
 
 class Localization(Node):
-    def __init__(self, type: LocalizationMode, dt = 0.1):
+    def __init__(self, dt = 0.1):
         super().__init__("localizer")
 
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
@@ -32,21 +33,21 @@ class Localization(Node):
         self.last_joint_state = None
         self.odom_msg = None
 
-        if type == LocalizationMode.RAW:
+        if _config.localization_mode == LocalizationMode.RAW:
             self.initRawSensors()
-        elif type == LocalizationMode.EKF:
+        elif _config.localization_mode == LocalizationMode.EKF:
             self.initKalmanfilter()
-        elif type == LocalizationMode.UKF:
+        elif _config.localization_mode == LocalizationMode.UKF:
             self.initUKF()
         else:
             print("We don't have this type for localization", sys.stderr)
             return
         
-        self.est_logger = CSVLogger(f'csv/{type.name}_robotPose.csv', ["x", "y", "th", "stamp"])
-        self.imu_logger = CSVLogger(f'csv/{type.name}_imu.csv', ["ax", "ay", "stamp"])
-        self.noisy_logger = CSVLogger(f"csv/{type.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.est_logger = CSVLogger(f'csv/{_config.localization_mode.name}_robotPose.csv', ["x", "y", "th", "stamp"])
+        self.imu_logger = CSVLogger(f'csv/{_config.localization_mode.name}_imu.csv', ["ax", "ay", "stamp"])
+        self.noisy_logger = CSVLogger(f"csv/{_config.localization_mode.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
 
-        self.odom_logger = CSVLogger(f"csv/{type.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.odom_logger = CSVLogger(f"csv/{_config.localization_mode.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
         self.odom_sub = self.create_subscription(odom, "/odom", self.log_odom, qos_profile=self.qos)
         
     def initRawSensors(self):

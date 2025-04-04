@@ -7,25 +7,19 @@ from rclpy import init, spin, spin_once
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
-from utils.controller import trajectoryController
+from utils import PathType, Planner
+from utils.controller import Controller
 from utils.helper import (
-    LocalizationMode,
     calculate_angular_error,
     calculate_linear_error,
     euler_from_quaternion,
 )
 from utils.localization import Localization
-from utils.pid import PID_ctrl
-from utils.planner import planner
-from utils import PathType
 
 
 class decision_maker(Node):
     def __init__(self):
         super().__init__("decision_maker")
-        self.localization_mode = LocalizationMode.UKF
-        self.planner_type = PathType.CIRCLE
-
         qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.publisher=self.create_publisher(Twist, "/cmd_vel", qos_profile=qos)
         
@@ -33,10 +27,10 @@ class decision_maker(Node):
         self.publishing_period = 1 / self.rate
         self.reachThreshold = 0.05
 
-        self.localizer = Localization(type=self.localization_mode)
+        self.localizer = Localization()
         
-        self.controller = trajectoryController()
-        self.planner = planner(self.planner_type)
+        self.controller = Controller()
+        self.planner = Planner()
         
         self.create_timer(self.publishing_period, self.timerCallback)
 
