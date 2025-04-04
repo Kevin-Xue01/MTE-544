@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.linalg
 
-class ukf:
 
+class UKF:
     def __init__(self, x, P, Q, R, dt, alpha=1e-3, kappa=0, beta=2):
         self.n = len(x) # state dimension
         self.n_sig = 1 + self.n * 2 # number of sigma points

@@ -1,7 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-from ukf import ukf  # Ensure your ukf class is in a file named ukf.py or adjust the import accordingly
+
+from utils import UKF
+
 
 def load_csv(filename):
     return np.loadtxt(filename, delimiter=',', skiprows=1)
@@ -26,7 +28,7 @@ def run_ukf(q_diag, r_diag, odom_data, imu_data, gt_data):
     dt = 0.1  # Fixed time step (update if timestamps are available)
     
     # Instantiate the UKF filter with the given initial state and noise matrices.
-    filter_instance = ukf(x_init, P0, Q, R, dt)
+    filter_instance = UKF(x_init, P0, Q, R, dt)
     
     estimates = []
     # Loop through the data and update the filter.

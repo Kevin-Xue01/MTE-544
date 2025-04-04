@@ -1,7 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-from kalman_filter import kalman_filter
+
+from utils import EKF
+
 
 def load_csv(filename):
     return np.loadtxt(filename, delimiter=',', skiprows=1)
@@ -21,7 +23,7 @@ def run_kf(q_diag, r_diag, odom_data, imu_data, gt_data):
     x_init = np.array([x0, y0, 0.0, w0, v0, 0.0])
     P0 = 0.1 * np.eye(6)
     dt = 0.1
-    kf = kalman_filter(P0, Q, R, x_init, dt)
+    kf = EKF(P0, Q, R, x_init, dt)
     
     estimates = []
     for i in range(1, len(odom_data)):

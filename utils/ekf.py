@@ -1,6 +1,7 @@
 import numpy as np
 
-class kalman_filter:
+
+class EKF:
        
     def __init__(self, P,Q,R, x, dt):
         self.P=P

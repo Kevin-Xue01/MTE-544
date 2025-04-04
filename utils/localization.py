@@ -11,19 +11,19 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 
-from kalman_filter import kalman_filter
-from ukf import ukf
-from utilities import (
+from .ekf import EKF
+from .helper import (
     CSVLogger,
     LocalizationMode,
     calculate_angular_error,
     calculate_linear_error,
     euler_from_quaternion,
 )
+from .ukf import UKF
 
 # kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
-class localization(Node):
+class Localization(Node):
     def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
         super().__init__("localizer")
 
@@ -93,7 +93,7 @@ class localization(Node):
         
         P = Q.copy()
         
-        self.kf = kalman_filter(P,Q,R, x, self.dt)
+        self.kf = EKF(P,Q,R, x, self.dt)
         
         self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
@@ -123,7 +123,7 @@ class localization(Node):
 
         P = Q.copy()
 
-        self.ukf = ukf(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
+        self.ukf = UKF(x, P, Q, R, self.dt,alpha=1e-3,kappa=0,beta=2)
 
         self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
@@ -223,6 +223,6 @@ if __name__=="__main__":
     
     init()
     
-    LOCALIZER=localization()
+    LOCALIZER=Localization()
     
     spin(LOCALIZER)
