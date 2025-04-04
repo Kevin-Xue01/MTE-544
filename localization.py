@@ -9,7 +9,7 @@ from rclpy import init, spin, spin_once
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, JointState
 
 from kalman_filter import kalman_filter
 from ukf import ukf
@@ -27,7 +27,6 @@ class localization(Node):
     def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
         super().__init__("localizer")
 
-        self.logger = CSVLogger(f'csv/{type.name}_robot_pose.csv', ["x", "y", "th", "stamp"])
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
         self.qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, durability=2, history=1, depth=10)
         self.dt = dt
@@ -41,13 +40,43 @@ class localization(Node):
         else:
             print("We don't have this type for localization", sys.stderr)
             return  
+        
+        self.joint_state_sub = self.create_subscription(JointState, "/joint_states", self.joint_states_callback, 10)
+        self.last_joint_state = None
+
+        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
+        self.imu_logger = CSVLogger(f'csv/imu.csv', ["ax", "ay", "stamp"])
+        self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
+
+        # Just for loggining, can remove later
+        self.odom_sub = self.create_subscription(odom, "/odom", self.log_odom, qos_profile=self.qos)
+        self.odom_logger = CSVLogger("csv/odom.csv", ["x", "y", "v", "w", "stamp"])
+        self.odom_msg = None
+        
+        
 
     def initRawSensors(self):
         self.create_subscription(odom, "/noisy_odom", self.odom_callback, qos_profile=self.qos)
         
     def initKalmanfilter(self):
         x = [0,0,0,0,0,0]
-        
+
+        Q = np.array([
+            [1.00000000e-01, 0. , 0. , 0. , 0. , 0. ],
+            [0. , 1.00000000e-01, 0. , 0. , 0. , 0. ],
+            [0. , 0. , 1.00000000e-01, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 1.60247961e+00, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 1.00000000e-06, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 2.09662606e-01],
+        ])
+
+        R = np.array([
+            [1.03422841e-02, 0.  , 0.  , 0.  ],
+            [0.  , 1.00000000e-06, 0.  , 0.  ],
+            [0.  , 0.  , 5.34596331e-01, 0.  ],
+            [0.  , 0.  , 0.  , 3.72916777e-02],
+        ])
+
         Q = np.array([
             [0.5, 0. , 0. , 0. , 0. , 0. ],
             [0. , 0.5, 0. , 0. , 0. , 0. ],
@@ -104,7 +133,8 @@ class localization(Node):
         time_syncher.registerCallback(self.fusion_callback_ukf)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
-        
+        if self.odom_msg is None:
+            return
         # TODO Part 3: Use the EKF to perform state estimation
         # Take the measurements
         # your measurements are the linear velocity and angular velocity from odom msg
@@ -131,9 +161,13 @@ class localization(Node):
         # #presume kf_ax & kf_ay utilize kf values
         # kf_ax = xhat[5]
         # kf_ay = xhat[4]*xhat[3]
-
-        self.logger.log(self.pose)
-
+        
+        stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
+        self.ekf_logger.log([xhat[0], xhat[1], xhat[2], stamp])
+        self.imu_logger.log([ax, ay, stamp])
+        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+    
     def fusion_callback_ukf(self, odom_msg: odom, imu_msg: Imu):
         
         # TODO Part 3: Use the EKF to perform state estimation
@@ -164,13 +198,21 @@ class localization(Node):
         # kf_ay = xhat[4]*xhat[3]
 
         self.logger.log(self.pose)
+        self.imu_logger.log([ax, ay, stamp])
+        self.noisy_logger.log([odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+        self.odom_logger.log([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z, stamp])
+    
       
     def odom_callback(self, pose_msg):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
-        self.logger.log(self.pose)
+        self.ekf_logger.log(self.pose)
 
     def getPose(self):
         return self.pose
+    
+    def joint_states_callback(self, msg):
+        self.last_joint_state = msg
+
 
 
 if __name__=="__main__":

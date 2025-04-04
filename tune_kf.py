@@ -1,0 +1,86 @@
+import numpy as np
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+from kalman_filter import kalman_filter
+
+def load_csv(filename):
+    return np.loadtxt(filename, delimiter=',', skiprows=1)
+
+def load_dataset(folder):
+    upper_folder = "csv/baseline"
+    gt_data = load_csv(f'{upper_folder}/{folder}/odom.csv')
+    odom_data = load_csv(f'{upper_folder}/{folder}/noisy_odom.csv')
+    imu_data = load_csv(f'{upper_folder}/{folder}/imu.csv')
+    return odom_data, imu_data, gt_data
+
+def run_kf(q_diag, r_diag, odom_data, imu_data, gt_data):
+    Q = np.diag(q_diag)
+    R = np.diag(r_diag)
+
+    x0, y0, v0, w0, _ = gt_data[0]
+    x_init = np.array([x0, y0, 0.0, w0, v0, 0.0])
+    P0 = 0.1 * np.eye(6)
+    dt = 0.1
+    kf = kalman_filter(P0, Q, R, x_init, dt)
+    
+    estimates = []
+    for i in range(1, len(odom_data)):
+        v = odom_data[i, 2]
+        w = odom_data[i, 3]
+        ax = imu_data[i, 0]
+        ay = imu_data[i, 1]
+        z = np.array([v, w, ax, ay])
+        kf.predict()
+        kf.update(z)
+        estimates.append(kf.get_states().copy())
+    
+    return np.array(estimates)
+
+def objective_multi(params, datasets):
+    q_diag = params[:6]
+    r_diag = params[6:]
+    total_mse = 0.0
+    for odom_data, imu_data, gt_data in datasets:
+        est = run_kf(q_diag, r_diag, odom_data, imu_data, gt_data)
+        gt_positions = gt_data[1:, :2]
+        kf_positions = est[:, :2]
+        mse = np.mean(np.sum((kf_positions - gt_positions)**2, axis=1))
+        total_mse += mse
+    avg_mse = total_mse / len(datasets)
+    return avg_mse
+
+def optimize_noise_params(datasets):
+    initial_guess = [0.1, 0.1, 0.1, 0.248914773, 1e-6, 0.0237562553, 
+                     0.693434422, 1e-6, 3.04253728, 0.715754008]
+    bounds = [(1e-6, None)] * 10
+    result = minimize(objective_multi, initial_guess, args=(datasets,), bounds=bounds)
+    return result
+
+def main():
+    folders = ["zigzag", "circular", "snake", "square", "sporadic"]
+    datasets = []
+    for folder in folders:
+        datasets.append(load_dataset(folder))
+    
+    result = optimize_noise_params(datasets)
+    print("Optimal noise scaling parameters:")
+    print("Q diagonals (process noise):", result.x[:6])
+    print("R diagonals (measurement noise):", result.x[6:])
+    print("Objective (avg. MSE):", result.fun)
+    
+    for idx, (odom_data, imu_data, gt_data) in enumerate(datasets):
+        est = run_kf(result.x[:6], result.x[6:], odom_data, imu_data, gt_data)
+        gt_positions = gt_data[1:, :2]
+        kf_positions = est[:, :2]
+        
+        plt.figure()
+        plt.plot(gt_positions[:, 0], gt_positions[:, 1], label="Ground Truth", marker='o', linestyle='-')
+        plt.plot(kf_positions[:, 0], kf_positions[:, 1], label="KF Estimate", marker='x', linestyle='--')
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.title(f"Dataset {idx+1}: KF Fusion - Estimated Trajectory vs. Ground Truth")
+        plt.legend()
+        plt.show()
+
+if __name__ == "__main__":
+    main()
