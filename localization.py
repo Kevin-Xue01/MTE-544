@@ -41,7 +41,7 @@ class localization(Node):
         self.joint_state_sub = self.create_subscription(JointState, "/joint_states", self.joint_states_callback, 10)
         self.last_joint_state = None
 
-        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])S
+        self.ekf_logger = CSVLogger(f'csv/{type.name}_estimate.csv', ["x", "y", "th", "stamp"])
         self.imu_logger = CSVLogger(f'csv/imu.csv', ["ax", "ay", "stamp"])
         self.noisy_logger = CSVLogger("csv/noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
 
@@ -62,16 +62,16 @@ class localization(Node):
             [1.00000000e-01, 0. , 0. , 0. , 0. , 0. ],
             [0. , 1.00000000e-01, 0. , 0. , 0. , 0. ],
             [0. , 0. , 1.00000000e-01, 0. , 0. , 0. ],
-            [0. , 0. , 0. , 4.87129354e+01, 0. , 0. ],
-            [0. , 0. , 0. , 0. , 5.22819682e+01, 0. ],
-            [0. , 0. , 0. , 0. , 0. , 9.59252518e-04],
+            [0. , 0. , 0. , 2.48914773e-01, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 1.00000000e-06, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 2.37562553e-02],
         ])
 
         R = np.array([
-            [2.48418733e+00, 0.  , 0.  , 0.  ],
+            [6.93434422e-01, 0.  , 0.  , 0.  ],
             [0.  , 1.00000000e-06, 0.  , 0.  ],
-            [0.  , 0.  , 4.10168395e+00, 0.  ],
-            [0.  , 0.  , 0.  , 1.73554297e+00],
+            [0.  , 0.  , 3.04253728e+00, 0.  ],
+            [0.  , 0.  , 0.  , 7.15754008e-01],
         ])
 
         Q = np.array([
