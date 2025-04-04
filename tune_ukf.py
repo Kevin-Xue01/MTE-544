@@ -6,14 +6,12 @@ from ukf import ukf  # Ensure your ukf class is in a file named ukf.py or adjust
 def load_csv(filename):
     return np.loadtxt(filename, delimiter=',', skiprows=1)
 
-# File paths for the ground truth, odometry, and IMU measurements.
-ground_truth_file = 'csv/odom.csv'
-odom_file = 'csv/noisy_odom.csv'
-imu_file = 'csv/imu.csv'
-
-gt_data = load_csv(ground_truth_file)
-odom_data = load_csv(odom_file)
-imu_data = load_csv(imu_file)
+def load_dataset(folder):
+    upper_folder = "csv/baseline"
+    gt_data = load_csv(f'{upper_folder}/{folder}/odom.csv')
+    odom_data = load_csv(f'{upper_folder}/{folder}/noisy_odom.csv')
+    imu_data = load_csv(f'{upper_folder}/{folder}/imu.csv')
+    return odom_data, imu_data, gt_data
 
 def run_ukf(q_diag, r_diag, odom_data, imu_data, gt_data):
     # Build Q and R as diagonal matrices from the provided parameters.
@@ -48,44 +46,48 @@ def run_ukf(q_diag, r_diag, odom_data, imu_data, gt_data):
         
     return np.array(estimates)
 
-def objective(params, odom_data, imu_data, gt_data):
-    # The parameter vector contains 10 elements: the first 6 for Q and the next 4 for R.
+def objective_multi(params, datasets):
     q_diag = params[:6]
     r_diag = params[6:]
-    
-    est = run_ukf(q_diag, r_diag, odom_data, imu_data, gt_data)
-    gt_positions = gt_data[1:, :2]  # Assuming columns 0 and 1 correspond to x and y
-    ukf_positions = est[:, :2]
-    mse = np.mean(np.sum((ukf_positions - gt_positions)**2, axis=1))
-    return mse
+    total_mse = 0.0
+    for odom_data, imu_data, gt_data in datasets:
+        est = run_ukf(q_diag, r_diag, odom_data, imu_data, gt_data)
+        gt_positions = gt_data[1:, :2]
+        ukf_positions = est[:, :2]
+        mse = np.mean(np.sum((ukf_positions - gt_positions)**2, axis=1))
+        total_mse += mse
+    avg_mse = total_mse / len(datasets)
+    return avg_mse
 
-def optimize_noise_params(odom_data, imu_data, gt_data):
-    # Use 10 parameters (6 for Q and 4 for R) with an initial guess.
+def optimize_noise_params(datasets):
     initial_guess = [0.1] * 10
     bounds = [(1e-6, None)] * 10
-    result = minimize(objective, initial_guess, args=(odom_data, imu_data, gt_data), bounds=bounds)
+    result = minimize(objective_multi, initial_guess, args=(datasets,), bounds=bounds)
     return result
 
 def main():
-    result = optimize_noise_params(odom_data, imu_data, gt_data)
+    folders = ["circular", "zigzag", "snake", "square","sporadic"]
+    #, "zigzag", "snake", "square"
+    datasets = [load_dataset(folder) for folder in folders]
+    
+    result = optimize_noise_params(datasets)
     print("Optimal noise scaling parameters:")
     print("Q diagonals (process noise):", result.x[:6])
     print("R diagonals (measurement noise):", result.x[6:])
-    print("Objective MSE:", result.fun)
+    print("Objective (avg. MSE):", result.fun)
     
-    # Run the UKF with the optimized parameters and plot the results.
-    est = run_ukf(result.x[:6], result.x[6:], odom_data, imu_data, gt_data)
-    gt_positions = gt_data[1:, :2]
-    ukf_positions = est[:, :2]
-    
-    plt.figure()
-    plt.plot(gt_positions[:, 0], gt_positions[:, 1], label="Ground Truth", marker='o', linestyle='-')
-    plt.plot(ukf_positions[:, 0], ukf_positions[:, 1], label="UKF Estimate", marker='x', linestyle='--')
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("UKF Fusion: Estimated Trajectory vs. Ground Truth")
-    plt.legend()
-    plt.show()
-
+    for idx, (odom_data, imu_data, gt_data) in enumerate(datasets):
+        est = run_ukf(result.x[:6], result.x[6:], odom_data, imu_data, gt_data)
+        gt_positions = gt_data[1:, :2]
+        ukf_positions = est[:, :2]
+        
+        plt.figure()
+        plt.plot(gt_positions[:, 0], gt_positions[:, 1], label="Ground Truth", marker='o', linestyle='-')
+        plt.plot(ukf_positions[:, 0], ukf_positions[:, 1], label="UKF Estimate", marker='x', linestyle='--')
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.title(f"Dataset {idx+1}: UKF Fusion - Estimated Trajectory vs. Ground Truth")
+        plt.legend()
+        plt.show()
 if __name__ == "__main__":
     main()

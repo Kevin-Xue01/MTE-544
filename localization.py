@@ -24,7 +24,7 @@ from utilities import (
 # kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
 class localization(Node):
-    def __init__(self, type: LocalizationMode = LocalizationMode.RAW, dt = 0.1):
+    def __init__(self, type: LocalizationMode = LocalizationMode.UKF, dt = 0.1):
         super().__init__("localizer")
 
         self.pose = np.array([0.0, 0.0, 0.0, self.get_clock().now().to_msg()])
@@ -105,19 +105,20 @@ class localization(Node):
         x = [0,0,0,0,0,0]
 
         Q = np.array([
-            [0.01, 0, 0, 0, 0, 0],   # x process noise
-            [0, 0.01, 0, 0, 0, 0],   # y process noise
-            [0, 0, 0.001, 0, 0, 0],  # theta process noise
-            [0, 0, 0, 0.1, 0, 0],    # v process noise
-            [0, 0, 0, 0, 0.01, 0],   # w process noise
-            [0, 0, 0, 0, 0, 0.001]  # vdot process noise
+            [1.03218359e-01, 0. , 0. , 0. , 0. , 0. ],
+            [0. , 1.01333363e-01, 0. , 0. , 0. , 0. ],
+            [0. , 0. , 1.00000000e-06, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 1.08341521e-01, 0. , 0. ],
+            [0. , 0. , 0. , 0. , 1.05329996e-01, 0. ],
+            [0. , 0. , 0. , 0. , 0. , 1.01631006e-01],
         ])
 
+
         R = np.array([
-            [10.0, 0.0, 0.0, 0.0],   # Higher variance for velocity (v), indicating more uncertainty
-            [0.0, 0.0001, 0.0, 0.0], # Very small variance for angular velocity (w), very precise
-            [0.0, 0.0, 1.0, 0.0],    # Moderate variance for x acceleration (ax)
-            [0.0, 0.0, 0.0, 1.0]     # Moderate variance for y acceleration (ay)
+            [1.08078889e-01, 0.  , 0.  , 0.  ],
+            [0.  , 1.00000000e-06, 0.  , 0.  ],
+            [0.  , 0.  , 7.82164814e-02, 0.  ],
+            [0.  , 0.  , 0.  , 7.96654837e-02],
         ])
 
         P = Q.copy()
