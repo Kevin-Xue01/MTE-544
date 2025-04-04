@@ -22,3 +22,4 @@ class PathType(Enum):
     SPORADIC = auto()
     SQUARE = auto()
     SNAKE = auto()
+    MIXED = auto()

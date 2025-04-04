@@ -20,6 +20,8 @@ class Planner:
             self.traj = self.generate_square_path()
         elif _config.path_type == PathType.SNAKE:
             self.traj = self.generate_snake_path()
+        elif _config.path_type == PathType.MIXED:
+            self.traj = self.generate_mixed_path()
         else:
             raise ValueError(f"Unknown path type")
         
@@ -100,4 +102,28 @@ class Planner:
             for _ in range(step):
                 path.append((x, y))
                 y -= 1
+        return path
+    
+    def generate_mixed_path(self):
+        path = []
+        
+        # Drive straight
+        for i in range(3):
+            path.append((i, 0))
+        
+        # Turn left following an arc
+        center = (3, 2)  # Center of the arc
+        radius = 2
+        angles = np.linspace(-np.pi / 2, np.pi / 2, 50)
+        for angle in angles:
+            x = center[0] + radius * np.cos(angle)
+            y = center[1] + radius * np.sin(angle)
+            path.append((x, y))
+        
+        # Head back straight in a zigzag pattern
+        for i in range(1, 6):
+            x = 5 - i
+            y = 1 if i % 2 == 0 else -1
+            path.append((x, y))
+        
         return path
