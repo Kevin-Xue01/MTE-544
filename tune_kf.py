@@ -59,8 +59,8 @@ def objective_multi(params, datasets):
     return avg_mse
 
 def optimize_noise_params(datasets):
-    Q = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    R = [0.25, 0.25, 0.25, 0.25]
+    Q = [0.5, 0.5, 0.5, 0.80956211, 1.24191514, 0.68991819]
+    R = [0.00037352, 0.00012689, 0.00026555, 0.0001471]
     initial_guess = np.concatenate((Q, R))
     bounds = [(1e-6, None)] * 10
     result = minimize(objective_multi, initial_guess, args=(datasets,), bounds=bounds)

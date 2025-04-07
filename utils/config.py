@@ -6,8 +6,8 @@ from .constants import ControllerType, LocalizationMode, PathType
 class Config(BaseModel):
     localization_mode: LocalizationMode = LocalizationMode.EKF
     controller_type: ControllerType = ControllerType.PID
-    path_type: PathType = PathType.ZIGZAG
-    training_iteration: int = 0
+    path_type: PathType = PathType.SPORADIC
+    training_iteration: int = 2
     klp: float = 0.2 
     klv: float = 0.5 
     kli: float = 0.2 
