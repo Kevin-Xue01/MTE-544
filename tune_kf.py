@@ -116,7 +116,7 @@ def main():
                 plt.legend()
                 plt.grid()
 
-                output_file_est = os.path.join(folder_path, f'{folder}_trajectory_trained.png')
+                output_file_est = os.path.join(folder_path, f'{folder}_{localization_mode.name}_trajectory_trained.png')
                 plt.savefig(output_file_est)
                 plt.close()
 
