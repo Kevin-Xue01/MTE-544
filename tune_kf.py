@@ -67,7 +67,7 @@ def optimize_noise_params(datasets):
     return result
 
 def main():
-    folders = ["CIRCLE", "ZIGZAG", "SPORADIC", "SQUARE", "SNAKE", "MIXED"]
+    folders = ["CIRCLE", "ZIGZAG", "SQUARE", "SNAKE"]
     datasets = []
     for folder in folders:
         datasets.append(load_dataset(folder))
@@ -78,29 +78,24 @@ def main():
     print("R diagonals (measurement noise):", result.x[6:])
     print("Objective (avg. MSE):", result.fun)
 
-    # Iterate through all subfolders in the base folder
     for folder in os.listdir(base_folder):
         folder_path = os.path.join(base_folder, folder)
-        if os.path.isdir(folder_path):  # Ensure it's a folder
-            # Define file paths
-            ground_truth_file = os.path.join(folder_path, f'{localization_mode.name}_odom.csv')  # x,y,v,w
-            odom_file = os.path.join(folder_path, f'{localization_mode.name}_noisy_odom.csv')  # x,y,v,w
-            imu_file = os.path.join(folder_path, f'{localization_mode.name}_imu.csv')  # ax,ay
-            original_estimate_file = os.path.join(folder_path, f'{localization_mode.name}_robotPose.csv')  # x,y
+        if os.path.isdir(folder_path):
+            ground_truth_file = os.path.join(folder_path, f'{localization_mode.name}_odom.csv')
+            odom_file = os.path.join(folder_path, f'{localization_mode.name}_noisy_odom.csv')
+            imu_file = os.path.join(folder_path, f'{localization_mode.name}_imu.csv')
+            original_estimate_file = os.path.join(folder_path, f'{localization_mode.name}_robotPose.csv')
 
             if os.path.exists(ground_truth_file) and os.path.exists(odom_file) and os.path.exists(imu_file) and os.path.exists(original_estimate_file):
-                # Load data
                 ground_truth = load_csv(ground_truth_file)
                 odom = load_csv(odom_file)
                 imu = load_csv(imu_file)
                 original_estimate = load_csv(original_estimate_file)
 
-                # Use the optimal parameters from tuning
                 optimal_q_diag = result.x[:6]
                 optimal_r_diag = result.x[6:]
                 estimates = run_kf(optimal_q_diag, optimal_r_diag, odom, imu, ground_truth)
 
-                # Compute MSEs
                 gt_positions = ground_truth[:, :2]
                 odom_positions = odom[:, :2]
                 est_positions = estimates[:, :2]
@@ -109,13 +104,11 @@ def main():
                 mse_gt_est = np.mean(np.sum((gt_positions[:len(est_positions)] - est_positions) ** 2, axis=1))
                 mse_gt_original = np.mean(np.sum((gt_positions[:len(original_positions)] - original_positions) ** 2, axis=1))
 
-                # Plot odometry + EKF estimate trajectory
                 plt.figure(figsize=(10, 6))
                 plt.plot(ground_truth[:, 0], ground_truth[:, 1], label='Ground Truth', color='black', alpha=0.7, linewidth=2.5)
                 plt.plot(odom[:, 0], odom[:, 1], label=f'DR (MSE={mse_gt_odom:.4f})', color='orange', alpha=0.7, linestyle='--')
                 plt.plot(original_estimate[:, 0], original_estimate[:, 1], label=f'Original {localization_mode.name} (MSE={mse_gt_original:.4f})', color='blue', alpha=0.7, linestyle=':')
                 plt.plot(estimates[:, 0], estimates[:, 1], label=f'Trained {localization_mode.name} (MSE={mse_gt_est:.4f})', color='green', alpha=0.7, linestyle='-.')
-                
 
                 plt.xlabel('X (m)')
                 plt.ylabel('Y (m)')
@@ -123,10 +116,9 @@ def main():
                 plt.legend()
                 plt.grid()
 
-                # Save the odometry + EKF estimate plot to a file
                 output_file_est = os.path.join(folder_path, f'{folder}_trajectory_trained.png')
                 plt.savefig(output_file_est)
-                plt.close()  # Close the plot to avoid displaying it
+                plt.close()
 
 if __name__ == "__main__":
     main()
