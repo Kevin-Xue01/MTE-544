@@ -31,8 +31,7 @@ class UKF:
 
         tmp_mat = (self.n + self.lmbda)*self.P
 
-        # print spr_mat
-        spr_mat = scipy.linalg.sqrtm(tmp_mat)
+        spr_mat = np.linalg.cholesky(tmp_mat).T
 
         ret[0] = self.x
         for i in range(self.n):
