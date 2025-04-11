@@ -1,6 +1,4 @@
 import sys
-from enum import Enum, auto
-
 import message_filters
 import numpy as np
 from geometry_msgs.msg import Twist
@@ -14,7 +12,6 @@ from sensor_msgs.msg import Imu, JointState
 from .ekf import EKF
 from .helper import (
     CSVLogger,
-
     calculate_angular_error,
     calculate_linear_error,
     euler_from_quaternion,
@@ -22,7 +19,6 @@ from .helper import (
 from .ukf import UKF
 from .constants import LocalizationMode, PathType
 from .config import _config
-# kalmanFilter_headers = ["imu_ax", "imu_ay", "kf_ax", "kf_ay","kf_vx","kf_w","kf_x", "kf_y","stamp"]
 
 class DifferentialDriveKinematics:
     def __init__(self, wheel_radius, wheel_separation, ticks_per_rev):
@@ -88,19 +84,15 @@ class Localization(Node):
             print("We don't have this type for localization", sys.stderr)
             return
         
-        self.last_joint_state = None
-
         self.est_logger = CSVLogger(f'csv/{training_iteration}/{path_type.name}/{type.name}_robotPose.csv', ["x", "y", "th", "stamp"])
         self.imu_logger = CSVLogger(f'csv/{training_iteration}/{path_type.name}/{type.name}_imu.csv', ["ax", "ay", "stamp"])
         self.noisy_logger = CSVLogger(f"csv/{training_iteration}/{path_type.name}/{type.name}_noisy_odom.csv", ["x", "y", "v", "w", "stamp"])
         self.odom_logger = CSVLogger(f"csv/{training_iteration}/{path_type.name}/{type.name}_odom.csv", ["x", "y", "v", "w", "stamp"])
 
-        # Just for loggining, can remove later
         self.odom_sub = self.create_subscription(Odometry, "/odom", self.log_odom, qos_profile=self.qos)
         self.odom_msg = None
         self.joint_state_msg = None
 
-        #######
         self.joint_sub = self.create_subscription(
             JointState,
             '/joint_states',
@@ -119,7 +111,6 @@ class Localization(Node):
         self.current_pose = None
 
     def joint_state_callback(self, msg: JointState):
-        """ Extracts wheel positions (converted from radians to ticks) from /joint_states """
         left_wheel = 'wheel_left_joint'
         right_wheel = 'wheel_right_joint'
 
@@ -131,12 +122,10 @@ class Localization(Node):
                 # Convert wheel positions from radians to encoder ticks
                 left_ticks = (msg.position[left_idx] * self.ticks_per_rev) / (2 * np.pi)
                 right_ticks = (msg.position[right_idx] * self.ticks_per_rev) / (2 * np.pi)
-                # print(left_ticks, right_ticks)
-                # Get current time
+
                 ros_now = self.get_clock().now()
                 current_time = ros_now.nanoseconds * 1e-9
 
-                # Compute kinematics
                 result = self.kinematics.update(left_ticks, right_ticks, current_time)
                 if result:
                     v, w, x, y, theta = result
@@ -146,7 +135,6 @@ class Localization(Node):
             self.get_logger().error(f'Error processing joint states: {e}')
         
     def initRawSensors(self):
-        # self.create_subscription(odom, "/noisy_odom", self.odom_callback, qos_profile=self.qos)
         self.joint_sub = message_filters.Subscriber(self, JointState, "/joint_states", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
@@ -178,14 +166,8 @@ class Localization(Node):
         
         P = Q.copy()
         
-        self.kf = EKF(P,Q,R, x, self.dt)
+        self.ekf = EKF(P,Q,R, x, self.dt)
         
-        # self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
-        # self.joint_sub = self.create_subscription(
-        #     JointState,
-        #     '/joint_states',
-        #     self.joint_state_callback,
-        #     qos_profile=self.qos)
         self.joint_sub = message_filters.Subscriber(self, JointState, "/joint_states", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
@@ -231,12 +213,6 @@ class Localization(Node):
 
         self.ukf = UKF(x, P, Q, R, self.dt)
 
-        # self.odom_sub = message_filters.Subscriber(self, odom, "/noisy_odom", qos_profile = self.qos)
-        # self.joint_sub = self.create_subscription(
-        #     JointState,
-        #     '/joint_states',
-        #     self.joint_state_callback,
-        #     qos_profile=self.qos)
         self.joint_sub = message_filters.Subscriber(self, JointState, "/joint_states", qos_profile = self.qos)
         self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile = self.qos)
         
@@ -249,39 +225,25 @@ class Localization(Node):
         result = self.joint_state_callback(joint_state_msg)
         if result is None:
             return
+
         v, w, x, y, theta = result
-        # # TODO Part 3: Use the EKF to perform state estimation
-        # # Take the measurements
-        # # your measurements are the linear velocity and angular velocity from odom msg
-        # # and linear acceleration in x and y from the imu msg
-        # # the kalman filter should do a proper integration to provide x,y and filter ax,ay
-        # #from odom
-        # # v = odom_msg.twist.twist.linear.x
-        # # w = odom_msg.twist.twist.angular.z
-        # #from IMU
         ax = imu_msg.linear_acceleration.x
         ay = imu_msg.linear_acceleration.y
 
-        # z = np.array([v,w,ax,ay]) #same structure as measurement model
-        
-        # # Implement the two steps for estimation
-        # self.kf.predict()
-        # self.kf.update(z)
-        
-        # # Get the estimate
-        # xhat=self.kf.get_states()
-        self.pose = np.array([x, y, theta, self.get_clock().now().to_msg()])
+        curr_time_msg = self.get_clock().now().to_msg()
+        self.pose = np.array([x, y, theta, curr_time_msg])
 
-        # # TODO Part 4: log your data
-        # #presume kf_ax & kf_ay utilize kf values
-        # kf_ax = xhat[5]
-        # kf_ay = xhat[4]*xhat[3]
-        stamp = joint_state_msg.header.stamp.sec + joint_state_msg.header.stamp.nanosec * 1e-9
-        
-        # stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
+        stamp = curr_time_msg.sec + curr_time_msg.nanosec * 1e-9
         self.est_logger.log([x, y, theta, stamp])
         self.imu_logger.log([ax, ay, stamp])
         self.noisy_logger.log([x, y, v, w, stamp])
+        self.odom_logger.log([
+            self.odom_msg.pose.pose.position.x,
+            self.odom_msg.pose.pose.position.y,
+            self.odom_msg.twist.twist.linear.x,
+            self.odom_msg.twist.twist.angular.z,
+            stamp
+        ])
 
     def fusion_callback_ekf(self, joint_state_msg: JointState, imu_msg: Imu):
         if joint_state_msg is None:
@@ -290,34 +252,17 @@ class Localization(Node):
         if result is None:
             return
         v, w, x, y, theta = result
-        # TODO Part 3: Use the EKF to perform state estimation
-        # Take the measurements
-        # your measurements are the linear velocity and angular velocity from odom msg
-        # and linear acceleration in x and y from the imu msg
-        # the kalman filter should do a proper integration to provide x,y and filter ax,ay
-        #from odom
-        # v = odom_msg.twist.twist.linear.x
-        # w = odom_msg.twist.twist.angular.z
-        #from IMU
         ax = imu_msg.linear_acceleration.x
         ay = imu_msg.linear_acceleration.y
 
-        z = np.array([v,w,ax,ay]) #same structure as measurement model
+        z = np.array([v,w,ax,ay])
         
-        # Implement the two steps for estimation
-        self.kf.predict()
-        self.kf.update(z)
+        self.ekf.predict()
+        self.ekf.update(z)
         
-        # Get the estimate
-        xhat=self.kf.get_states()
-        self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
+        xhat = self.ekf.get_states()
+        self.pose = np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
 
-        # # TODO Part 4: log your data
-        # #presume kf_ax & kf_ay utilize kf values
-        # kf_ax = xhat[5]
-        # kf_ay = xhat[4]*xhat[3]
-
-        
         stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
         self.imu_logger.log([ax, ay, stamp])
@@ -338,32 +283,16 @@ class Localization(Node):
             return
         v, w, x, y, theta = result
         
-        # TODO Part 3: Use the EKF to perform state estimation
-        # Take the measurements
-        # your measurements are the linear velocity and angular velocity from odom msg
-        # and linear acceleration in x and y from the imu msg
-        # the kalman filter should do a proper integration to provide x,y and filter ax,ay
-        #from odom
-        # v = odom_msg.twist.twist.linear.x
-        # w = odom_msg.twist.twist.angular.z
-        #from IMU
         ax = imu_msg.linear_acceleration.x
         ay = imu_msg.linear_acceleration.y
 
-        z = np.array([v,w,ax, ay]) #same structure as measurement model
+        z = np.array([v,w,ax, ay])
         
-        # Implement the two steps for estimation
         self.ukf.predict()
         self.ukf.update(z)
         
-        # Get the estimate
-        xhat=self.ukf.get_states()
-        self.pose=np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
-
-        # # TODO Part 4: log your data
-        # #presume kf_ax & kf_ay utilize kf values
-        # kf_ax = xhat[5]
-        # kf_ay = xhat[4]*xhat[3]
+        xhat = self.ukf.get_states()
+        self.pose = np.array([xhat[0], xhat[1], xhat[2], self.get_clock().now().to_msg()])
 
         stamp = self.pose[3].sec + self.pose[3].nanosec * 1e-9
         self.est_logger.log([xhat[0], xhat[1], xhat[2], stamp])
@@ -379,24 +308,11 @@ class Localization(Node):
 
     def log_odom(self, msg: Odometry):
         self.odom_msg = msg
-        
     
-    def odom_callback(self, pose_msg):
-        self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, euler_from_quaternion(pose_msg.pose.pose.orientation), self.get_clock().now().to_msg()]
-        self.est_logger.log(self.pose)
-
     def getPose(self):
         return self.pose
     
-    def joint_states_callback(self, msg):
-        self.last_joint_state = msg
-
-
-
 if __name__=="__main__":
-    
     init()
-    
     LOCALIZER=Localization()
-    
     spin(LOCALIZER)
