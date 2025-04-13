@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel
 
 from .constants import ControllerType, LocalizationMode, PathType
 
@@ -18,8 +18,5 @@ class Config(BaseModel):
     alpha: float = 1e-3 
     kappa: int = 0
     beta: int = 2
-
-
-    
 
 _config = Config()

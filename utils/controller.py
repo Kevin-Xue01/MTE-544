@@ -5,7 +5,6 @@ from .config import _config
 from .helper import (
     calculate_angular_error,
     calculate_linear_error,
-    euler_from_quaternion,
 )
 from .pid import PID
 
@@ -22,7 +21,6 @@ class Controller:
         
         e_lin = calculate_linear_error(pose, finalGoal)
         e_ang = calculate_angular_error(pose, goal)
-
         
         linear_vel = self.PID_linear.update([e_lin, pose[3]], True)
         angular_vel = self.PID_angular.update([e_ang, pose[3]], True) 
@@ -34,7 +32,6 @@ class Controller:
 
 
     def lookFarFor(self, pose, listGoals):
-        
         poseArray = np.array([pose[0], pose[1]]) 
         listGoalsArray = np.array(listGoals)
 

@@ -1,19 +1,11 @@
-import sys
-from enum import Enum, auto
-
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry as odom
 from rclpy import init, spin, spin_once
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
-from utils import PathType, Planner
+from utils import Planner
 from utils.controller import Controller
-from utils.helper import (
-    calculate_angular_error,
-    calculate_linear_error,
-    euler_from_quaternion,
-)
+from utils.helper import calculate_linear_error
 from utils.localization import Localization
 
 
@@ -46,7 +38,6 @@ class decision_maker(Node):
         reached_goal = True if calculate_linear_error(self.localizer.getPose(), self.planner.traj[-1]) < self.reachThreshold else False
 
         if reached_goal:
-            print("reached goal")
             self.publisher.publish(vel_msg)
             raise SystemExit
         
@@ -58,14 +49,14 @@ class decision_maker(Node):
         self.publisher.publish(vel_msg)
 
 
-def main(args=None):
+def main():
     init()
     DM = decision_maker()
 
     try:
         spin(DM)
     except SystemExit:
-        print(f"reached there successfully {DM.localizer.pose}")
+        print(f"Reached destination {DM.localizer.pose}")
 
 if __name__=="__main__":
     main()

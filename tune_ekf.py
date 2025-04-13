@@ -6,7 +6,7 @@ from utils import EKF
 import os
 
 from utils.config import _config
-from utils.constants import ControllerType, LocalizationMode, PathType
+from utils.constants import LocalizationMode
 
 localization_mode: LocalizationMode = _config.localization_mode
 training_iteration: int = _config.training_iteration
