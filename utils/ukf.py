@@ -1,8 +1,6 @@
 import numpy as np
-import scipy.linalg
 
 from .config import _config
-
 
 class UKF:
     def __init__(self, x, P, Q, R, dt):

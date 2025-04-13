@@ -1,12 +1,7 @@
-import math
-from enum import Enum, auto
-from math import atan, atan2, cos, pi, sin
-
 import numpy as np
 
 from .config import _config
 from .constants import PathType
-
 
 class Planner:
     def __init__(self):
@@ -25,8 +20,6 @@ class Planner:
         else:
             raise ValueError(f"Unknown path type")
         
-        # print(self.traj)
-
     def generate_circular_path(self):
         center = (0, -2)
         radius = 2
@@ -71,18 +64,10 @@ class Planner:
             path.append((0, side_length - i * side_length / num_points_per_side))
         return path
 
-    # def generate_out_and_back_path(self):
-    #     path = []
-    #     for i in range(5):
-    #         path.append((i, 0))
-    #     for i in range(5, 3, -1):
-    #         path.append((i, 0))
-    #     return path
-
     def generate_snake_path(self):
         path = []
-        x, y = 0, 0  # Starting point
-        step = 5  # Initial step size
+        x, y = 0, 0
+        step = 5
         while step > 0:
             # Move right
             for _ in range(step):
